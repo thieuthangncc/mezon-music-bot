@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { MezonClientModule } from './libs/mezon-client/mezon-client.module';
 import { MiscModule } from './modules/misc/misc.module';
+import { StreamingModule } from './modules/streaming/streaming.module';
 import { ListenersModule } from './bot/listeners/listeners.module';
 
 @Module({
@@ -12,6 +13,7 @@ import { ListenersModule } from './bot/listeners/listeners.module';
         }),
         MezonClientModule,
         MiscModule,
+        StreamingModule,
         ListenersModule,
     ],
     providers: [AppService],

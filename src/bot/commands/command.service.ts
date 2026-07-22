@@ -5,6 +5,8 @@ import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
 import { MiscService } from '@/modules/misc/misc.service';
 import { MezonClientService } from '@libs/mezon-client/mezon-client.service';
 import { PingCommand } from './ping/ping.command';
+import { PlayCommand } from './play/play.command';
+import { StopCommand } from './stop/stop.command';
 
 @Injectable()
 export class CommandService {
@@ -13,9 +15,13 @@ export class CommandService {
     constructor(
         private readonly miscService: MiscService,
         private readonly mcService: MezonClientService,
-        private readonly pingCmd: PingCommand
+        private readonly pingCmd: PingCommand,
+        private readonly playCmd: PlayCommand,
+        private readonly stopCmd: StopCommand,
     ) {
         this.register(this.pingCmd);
+        this.register(this.playCmd);
+        this.register(this.stopCmd);
     }
 
     register(command: BotCommand) {
