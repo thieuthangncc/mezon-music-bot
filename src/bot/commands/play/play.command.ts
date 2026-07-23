@@ -24,7 +24,6 @@ export class PlayCommand implements BotCommand {
                 ChannelId: "2079770751530962944",
                 FileUrl: ctx.args[0],
             });
-            this.mcService.updateMessage(repliedMessage, getTextMessage("playing"))
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `play`:', error);
             await this.miscService.handleCommandError(ctx);

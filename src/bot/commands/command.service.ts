@@ -7,6 +7,7 @@ import { MezonClientService } from '@libs/mezon-client/mezon-client.service';
 import { PingCommand } from './ping/ping.command';
 import { PlayCommand } from './play/play.command';
 import { StopCommand } from './stop/stop.command';
+import { SetupCommand } from './setup/setup.command';
 
 @Injectable()
 export class CommandService {
@@ -18,10 +19,12 @@ export class CommandService {
         private readonly pingCmd: PingCommand,
         private readonly playCmd: PlayCommand,
         private readonly stopCmd: StopCommand,
+        private readonly setupCmd: SetupCommand,
     ) {
         this.register(this.pingCmd);
         this.register(this.playCmd);
         this.register(this.stopCmd);
+        this.register(this.setupCmd);
     }
 
     register(command: BotCommand) {
