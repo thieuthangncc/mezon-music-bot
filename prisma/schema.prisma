@@ -8,11 +8,56 @@ datasource db {
 }
 
 model User {
-  id                  String @id
-  username            String
-  avatar              String
-  clanId              String
-  streamingChannelId  String
+  id       String @id
+  username String
+  avatar   String
+
+  clans Clan[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Clan {
+  id      String @id
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  channel StreamingChannel?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StreamingChannel {
+  id     String @id
+  clanId String @unique
+  clan   Clan   @relation(fields: [clanId], references: [id])
+
+  playlist Playlist[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Playlist {
+  id                String           @id
+  streamingChannelId String
+  streamingChannel  StreamingChannel @relation(fields: [streamingChannelId], references: [id])
+
+  songs PlaylistSong[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PlaylistSong {
+  id            String @id
+  playlistId    String
+  playlist      Playlist @relation(fields: [playlistId], references: [id])
+  songUrl       String
+  songFileName  String?
+  order         Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

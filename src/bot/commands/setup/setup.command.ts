@@ -29,23 +29,72 @@ export class SetupCommand implements BotCommand {
                 return;
             }
 
-            const userData = {
-                id: event.sender_id as string,
-                username: event.username as string,
-                avatar: event.avatar as string,
-                clanId: event.clan_id as string,
-                streamingChannelId,
-            };
+            const userId = event.sender_id as string;
+            const clanId = event.clan_id as string;
+            const username = (event.username || event.display_name) as string;
+            const avatar = event.avatar as string;
 
-            await this.prismaService.user.upsert({
-                where: { id: userData.id },
-                update: userData,
-                create: userData,
+            await this.prismaService.$transaction(async (tx) => {
+                await tx.user.upsert({
+                    where: { id: userId },
+                    update: { username, avatar },
+                    create: { id: userId, username, avatar },
+                });
+
+                await tx.clan.upsert({
+                    where: { id: clanId },
+                    update: { ownerId: userId },
+                    create: { id: clanId, ownerId: userId },
+                });
+
+                const oldChannel = await tx.streamingChannel.findFirst({
+                    where: { clanId },
+                });
+
+                if (oldChannel && oldChannel.id !== streamingChannelId) {
+                    const oldPlaylists = await tx.playlist.findMany({
+                        where: { streamingChannelId: oldChannel.id },
+                        select: { id: true },
+                    });
+
+                    for (const pl of oldPlaylists) {
+                        await tx.playlistSong.deleteMany({
+                            where: { playlistId: pl.id },
+                        });
+                    }
+
+                    await tx.playlist.deleteMany({
+                        where: { streamingChannelId: oldChannel.id },
+                    });
+
+                    await tx.streamingChannel.delete({
+                        where: { id: oldChannel.id },
+                    });
+                }
+
+                await tx.streamingChannel.upsert({
+                    where: { id: streamingChannelId },
+                    update: { clanId },
+                    create: { id: streamingChannelId, clanId },
+                });
+
+                const existingPlaylist = await tx.playlist.findFirst({
+                    where: { streamingChannelId },
+                });
+
+                if (!existingPlaylist) {
+                    await tx.playlist.create({
+                        data: {
+                            id: `${streamingChannelId}-playlist`,
+                            streamingChannelId,
+                        },
+                    });
+                }
             });
 
             await this.mezonClientService.updateMessage(
                 repliedMessage,
-                getTextMessage('Setup completed successfully! Your streaming channel ID has been saved.'),
+                getTextMessage('Setup completed successfully! User, clan, channel, and default playlist have been created.'),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `setup`:', error);

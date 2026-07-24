@@ -8,6 +8,7 @@ import { PingCommand } from './ping/ping.command';
 import { PlayCommand } from './play/play.command';
 import { StopCommand } from './stop/stop.command';
 import { SetupCommand } from './setup/setup.command';
+import { RequestCommand } from './request/request.command';
 
 @Injectable()
 export class CommandService {
@@ -20,11 +21,13 @@ export class CommandService {
         private readonly playCmd: PlayCommand,
         private readonly stopCmd: StopCommand,
         private readonly setupCmd: SetupCommand,
+        private readonly reqCmd: RequestCommand,
     ) {
         this.register(this.pingCmd);
         this.register(this.playCmd);
         this.register(this.stopCmd);
         this.register(this.setupCmd);
+        this.register(this.reqCmd);
     }
 
     register(command: BotCommand) {
