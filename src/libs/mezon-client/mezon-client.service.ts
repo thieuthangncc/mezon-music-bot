@@ -1,12 +1,13 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ChannelMessageContent, MezonClient } from 'mezon-sdk';
 import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
+import { StreamingService } from '@/modules/streaming/streaming.service';
 
 @Injectable()
 export class MezonClientService implements OnModuleInit {
     private client: MezonClient;
 
-    constructor() {
+    constructor(private readonly streamingService: StreamingService) {
         this.client = new MezonClient({
             token: process.env.MEZON_BOT_TOKEN as string,
             botId: process.env.MEZON_BOT_ID as string,
@@ -14,14 +15,14 @@ export class MezonClientService implements OnModuleInit {
     }
 
     async onModuleInit() {
-        await this.client
-            .login()
-            .then(() => {
-                console.log('🌸 Bot đã được khởi động!');
-            })
-            .catch((error) => {
-                console.error('❌ Lỗi khi đăng nhập bot:', error);
-            });
+        try {
+            const result = await this.client.login();
+            const data = JSON.parse(result);
+            this.streamingService.connect(data.token);
+            console.log('🌸 Bot đã được khởi động!');
+        } catch (error) {
+            console.error('❌ Lỗi khi đăng nhập bot:', error);
+        }
     }
 
     getClient(): MezonClient {

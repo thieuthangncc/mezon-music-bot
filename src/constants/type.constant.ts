@@ -92,3 +92,17 @@ export interface AsyncMutexMsg {
     userId: number;
     type: string;
 }
+
+export interface StreamingParams {
+    ChannelId: string;
+    Password?: string;
+    FileUrl?: string;
+}
+
+export interface SocketMessaage {
+    ClanId: string;
+    ChannelId: string;
+    UserId: string;
+    Value: StreamingParams;
+    Key: string;
+}

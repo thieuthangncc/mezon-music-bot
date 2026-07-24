@@ -10,7 +10,7 @@ export function isTrigger(content: string): boolean {
         return false;
     }
 
-    const prefixes = [process.env.COMMAND_PREFIX as string, 'sony'].filter(Boolean);
+    const prefixes = [process.env.COMMAND_PREFIX as string, 'dj'].filter(Boolean);
 
     return prefixes.some((prefix) => text.startsWith(`*${prefix}`));
 }
