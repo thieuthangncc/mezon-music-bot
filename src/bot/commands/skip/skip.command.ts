@@ -7,8 +7,8 @@ import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.se
 import { getTextMessage } from '@/utils';
 
 @Injectable()
-export class StopCommand implements BotCommand {
-    name = 'stop';
+export class SkipCommand implements BotCommand {
+    name = 'skip';
     isPublic = true;
 
     constructor(
@@ -28,22 +28,40 @@ export class StopCommand implements BotCommand {
             if (!session) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bot is not playing yet.'),
+                    getTextMessage('Bot is not playing yet. Use `*dj play <link>` first.'),
                 );
                 return;
             }
 
-            this.voicePlaybackService.killSession(session.voiceChannelId);
-            this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
+            const { removedSong, nextSong } = await this.voicePlaybackService.skipCurrentSong(
+                session.voiceChannelId,
+            );
+
+            if (!removedSong) {
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getTextMessage('No current song to skip.'),
+                );
+                return;
+            }
+
+            if (!nextSong) {
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getTextMessage(`Skipped "${removedSong.trackName}". Playlist is now empty.`),
+                );
+                return;
+            }
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage('Stopped and cleared playlist.'),
+                getTextMessage(
+                    `Skipped "${removedSong.trackName}". Now playing "${nextSong.trackName}".`,
+                ),
             );
         } catch (error) {
-            console.error('❌ Lỗi khi thực hiện lệnh `stop`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `skip`:', error);
             await this.miscService.handleCommandError(ctx, error);
         }
     }
 }
-

@@ -2,22 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { BotCommand, CommandContext } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
-import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
 import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
 import { getTextMessage, getSongEmbedMessage, extractFirstUrl } from '@/utils';
-import { ChannelType } from 'mezon-sdk';
 
 @Injectable()
-export class PlayCommand implements BotCommand {
-    name = 'play';
+export class AddCommand implements BotCommand {
+    name = 'add';
     isPublic = true;
 
     constructor(
         private readonly mcService: MezonClientService,
         private readonly miscService: MiscService,
         private readonly voicePlaylistService: VoicePlaylistService,
-        private readonly voicePlaybackService: VoicePlaybackService,
         private readonly songResolverService: SongResolverService,
     ) {}
 
@@ -30,48 +27,22 @@ export class PlayCommand implements BotCommand {
             if (!songUrl) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Please provide a song link. Usage: `*dj play <link>`'),
+                    getTextMessage('Please provide a song link. Usage: `*dj add <link>`'),
                 );
                 return;
             }
 
-            const userId = event.sender_id as string;
             const clanId = event.clan_id as string;
-            const client = this.mcService.getClient();
-            const clan = client.clans.get(clanId);
+            const session = this.voicePlaylistService.findSessionByClanId(clanId);
 
-            if (!clan) {
+            if (!session) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Cannot find clan. Please try again later.'),
+                    getTextMessage('Bot is not playing yet. Use `*dj play <link>` first.'),
                 );
                 return;
             }
 
-            const voiceUsers = await clan.listChannelVoiceUsers();
-            const userVoice = voiceUsers.voice_channel_users?.find(
-                (vcu) => vcu.user_ids?.includes(userId),
-            );
-
-            if (!userVoice?.channel_id) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('You need to join a voice channel before using this command.'),
-                );
-                return;
-            }
-
-            const voiceChannel = await client.channels.fetch(userVoice.channel_id);
-
-            if (voiceChannel.channel_type !== ChannelType.CHANNEL_TYPE_MEZON_VOICE) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('This channel is not a voice channel.'),
-                );
-                return;
-            }
-
-            const channelLabel = voiceChannel.name || userVoice.channel_id;
             const requestedBy = (event.display_name || event.username || 'Unknown') as string;
 
             const resolved = await this.songResolverService.resolve(songUrl, {
@@ -101,33 +72,32 @@ export class PlayCommand implements BotCommand {
                 },
             });
 
-            this.voicePlaybackService.startSession(
-                userVoice.channel_id,
-                clanId,
-                channelLabel,
-            );
             const song = this.voicePlaylistService.addSong(
-                userVoice.channel_id,
+                session.voiceChannelId,
                 resolved.youtubeUrl,
                 resolved.playableUrl,
                 resolved.trackInfo,
                 requestedBy,
             );
-            await this.voicePlaybackService.playSong(userVoice.channel_id, song.order);
+            const prevSong = this.voicePlaylistService.getPreviousSong(
+                session.voiceChannelId,
+                song.order,
+            );
 
             const cacheLabel = resolved.fromCache ? ' (from cache)' : '';
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSongEmbedMessage({
                     trackInfo: resolved.trackInfo,
-                    description: `🎵 Now playing in "${channelLabel}"${cacheLabel}`,
+                    description: `✅ Added to playlist (#${song.order})${cacheLabel}`,
                     songUrl: resolved.youtubeUrl,
                     order: song.order,
+                    prevTrackName: prevSong?.trackName ?? '—',
                     requestedBy,
                 }),
             );
         } catch (error) {
-            console.error('❌ Error when executing command `play`:', error);
+            console.error('❌ Error when executing command `add`:', error);
             await this.miscService.handleCommandError(ctx, error);
         }
     }

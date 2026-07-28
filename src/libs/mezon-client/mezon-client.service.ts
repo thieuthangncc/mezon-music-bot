@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { ChannelMessageContent, MezonClient } from 'mezon-sdk';
+import { ApiMessageAttachment, ChannelMessageContent, MezonClient } from 'mezon-sdk';
 import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
 import { StreamingService } from '@/modules/streaming/streaming.service';
 
@@ -29,11 +29,33 @@ export class MezonClientService implements OnModuleInit {
         return this.client;
     }
 
+    leaveVoiceChannel(clanId: string, voiceChannelId: string) {
+        const botId = process.env.MEZON_BOT_ID as string;
+        const socket = (this.client as MezonClient & { socketManager?: { getSocket: () => any } })
+            .socketManager?.getSocket();
+
+        socket
+            ?.writeVoiceLeaved?.(botId, clanId, voiceChannelId, botId)
+            ?.catch?.(() => {});
+    }
+
     async sendChannelMessage(channelId: string, messageContent: ChannelMessageContent) {
         try {
             const channel = await this.client.channels.fetch(channelId);
 
             await channel.send(messageContent);
+        } catch (error) {
+            console.error('❌ Lỗi khi gửi tin nhắn:', error);
+        }
+    }
+    
+    async sendUploadChannelMessage(
+        messageContent: ChannelMessageContent,
+        attachments: ApiMessageAttachment[],
+    ): Promise<Message | undefined> {
+        try {
+            const channel = await this.client.channels.fetch(process.env.UPLOAD_CHANNEL_ID as string);
+            return await channel.send(messageContent, [], attachments);
         } catch (error) {
             console.error('❌ Lỗi khi gửi tin nhắn:', error);
         }

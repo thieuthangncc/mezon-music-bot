@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/_generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/_generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -89,4 +90,22 @@ model RoomMember {
   createdAt DateTime @default(now())
 
   @@unique([userId, streamingChannelId])
+}
+
+model CachedSong {
+  id              String @id
+  title           String
+  youtubeUrl      String
+  youtubeVideoId  String @unique
+  oggUrl          String
+  thumbnailUrl    String?
+  authorName      String?
+  authorUrl       String?
+  providerName    String?
+  durationSeconds Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([title])
 }

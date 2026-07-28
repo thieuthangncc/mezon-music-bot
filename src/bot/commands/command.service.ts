@@ -5,10 +5,16 @@ import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
 import { MiscService } from '@/modules/misc/misc.service';
 import { MezonClientService } from '@libs/mezon-client/mezon-client.service';
 import { PingCommand } from './ping/ping.command';
-import { PlayCommand } from './play/play.command';
-import { StopCommand } from './stop/stop.command';
+import { StreamCommand } from './stream/stream.command';
+import { StopstreamCommand } from './stopstream/stopstream.command';
 import { SetupCommand } from './setup/setup.command';
 import { RequestCommand } from './request/request.command';
+import { PlayCommand } from './play/play.command';
+import { AddCommand } from './add/add.command';
+import { PlaylistCommand } from './playlist/playlist.command';
+import { NowCommand } from './now/now.command';
+import { SkipCommand } from './skip/skip.command';
+import { StopCommand } from './stop/stop.command';
 
 @Injectable()
 export class CommandService {
@@ -18,16 +24,28 @@ export class CommandService {
         private readonly miscService: MiscService,
         private readonly mcService: MezonClientService,
         private readonly pingCmd: PingCommand,
-        private readonly playCmd: PlayCommand,
-        private readonly stopCmd: StopCommand,
+        private readonly streamCmd: StreamCommand,
+        private readonly stopstreamCmd: StopstreamCommand,
         private readonly setupCmd: SetupCommand,
         private readonly reqCmd: RequestCommand,
+        private readonly playCmd: PlayCommand,
+        private readonly addCmd: AddCommand,
+        private readonly playlistCmd: PlaylistCommand,
+        private readonly nowCmd: NowCommand,
+        private readonly skipCmd: SkipCommand,
+        private readonly stopCmd: StopCommand,
     ) {
         this.register(this.pingCmd);
-        this.register(this.playCmd);
-        this.register(this.stopCmd);
+        this.register(this.streamCmd);
+        this.register(this.stopstreamCmd);
         this.register(this.setupCmd);
         this.register(this.reqCmd);
+        this.register(this.playCmd);
+        this.register(this.addCmd);
+        this.register(this.playlistCmd);
+        this.register(this.nowCmd);
+        this.register(this.skipCmd);
+        this.register(this.stopCmd);
     }
 
     register(command: BotCommand) {
