@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
@@ -9,7 +9,8 @@ import { getTextMessage } from '@/utils';
 @Injectable()
 export class SkipCommand implements BotCommand {
     name = 'skip';
-    isPublic = true;
+    role: CommandRole = 'elevated';
+    description = 'Bỏ qua bài hát hiện tại';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -28,7 +29,7 @@ export class SkipCommand implements BotCommand {
             if (!session) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bot is not playing yet. Use `*dj play` first.'),
+                    getTextMessage('Bot chưa phát nhạc. Dùng `*dj play` để phát.'),
                 );
                 return;
             }
@@ -40,7 +41,7 @@ export class SkipCommand implements BotCommand {
             if (!removedSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('No current song to skip.'),
+                    getTextMessage('Không có bài hát nào để bỏ qua.'),
                 );
                 return;
             }
@@ -48,7 +49,7 @@ export class SkipCommand implements BotCommand {
             if (!nextSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage(`Skipped "${removedSong.trackName}". Playlist is now empty.`),
+                    getTextMessage(`Đã bỏ qua "${removedSong.trackName}". Playlist hiện đang trống.`),
                 );
                 return;
             }
@@ -56,7 +57,7 @@ export class SkipCommand implements BotCommand {
             await this.mcService.updateMessage(
                 repliedMessage,
                 getTextMessage(
-                    `Skipped "${removedSong.trackName}". Now playing "${nextSong.trackName}".`,
+                    `Đã bỏ qua "${removedSong.trackName}". Đang phát "${nextSong.trackName}".`,
                 ),
             );
         } catch (error) {

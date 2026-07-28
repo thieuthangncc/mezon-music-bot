@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage } from '@/utils';
+import { getEmbedMessage, getTextMessage, getRandomPastelHexColor } from '@/utils';
 
 const PLAYLIST_LIMIT = 20;
 
 @Injectable()
 export class PlaylistCommand implements BotCommand {
     name = 'playlist';
-    isPublic = true;
+    role: CommandRole = 'public';
+    description = 'Xem danh sách bài hát';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -29,22 +30,32 @@ export class PlaylistCommand implements BotCommand {
             if (songs.length === 0) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Playlist is empty. Use `*dj add <link>` to add songs.'),
+                    getTextMessage('Playlist trống. Dùng `*dj add <link>` để thêm bài hát.'),
                 );
                 return;
             }
 
-            const lines = songs.map((song) => `${song.order}. ${song.trackName}`);
-            const header = total > PLAYLIST_LIMIT
-                ? `🎵 Playlist (top ${PLAYLIST_LIMIT}/${total})`
-                : `🎵 Playlist (${total} songs)`;
+            const songLines = songs.map((song) => `🎶 **${song.order}.** ${song.trackName}`);
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage(`${header}\n${lines.join('\n')}`),
+                getEmbedMessage({
+                    color: getRandomPastelHexColor(),
+                    title: '🎵 Danh sách phát',
+                    description: `Tổng cộng **${total}** bài hát`,
+                    fields: [
+                        { name: '📜 Danh sách', value: songLines.join('\n'), inline: false },
+                    ],
+                    footer: {
+                        text:
+                            total > PLAYLIST_LIMIT
+                                ? `📌 Chỉ hiển thị ${PLAYLIST_LIMIT}/${total} bài đầu tiên`
+                                : '💡 Dùng *dj req <link> để thêm bài hát',
+                    },
+                }),
             );
         } catch (error) {
-            console.error('❌ Error when executing command `playlist`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `playlist`:', error);
             await this.miscService.handleCommandError(ctx);
         }
     }

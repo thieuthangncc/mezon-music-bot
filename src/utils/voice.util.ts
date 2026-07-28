@@ -1,5 +1,5 @@
 import { ChannelType } from 'mezon-sdk';
-import type { MezonClient } from 'mezon-sdk';
+import { MezonClient } from 'mezon-sdk';
 
 export interface UserVoiceChannel {
     channelId: string;

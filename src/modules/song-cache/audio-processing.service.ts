@@ -7,7 +7,8 @@ import { promisify } from 'node:util';
 import { create } from 'youtube-dl-exec';
 
 const execFileAsync = promisify(execFile);
-const DEFAULT_YT_DLP_PATH = join(process.cwd(), 'node_modules/youtube-dl-exec/bin/yt-dlp');
+const YT_DLP_BIN = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
+const DEFAULT_YT_DLP_PATH = join(process.cwd(), 'node_modules/youtube-dl-exec/bin', YT_DLP_BIN);
 const MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024;
 export const SONG_UNPLAYABLE_MESSAGE = 'Can not play this song. Please try again later.';
 
@@ -35,7 +36,7 @@ export class AudioProcessingService implements OnModuleInit {
 
     private async resolveYtdlp() {
         const customPath = this.configService.get<string>('YT_DLP_PATH');
-        const candidates = [customPath, DEFAULT_YT_DLP_PATH, 'yt-dlp'].filter(
+        const candidates = [customPath, DEFAULT_YT_DLP_PATH, YT_DLP_BIN].filter(
             (path): path is string => Boolean(path),
         );
 

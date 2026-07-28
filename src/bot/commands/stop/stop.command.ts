@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
@@ -9,7 +9,8 @@ import { getTextMessage } from '@/utils';
 @Injectable()
 export class StopCommand implements BotCommand {
     name = 'stop';
-    isPublic = true;
+    role: CommandRole = 'elevated';
+    description = 'Dừng và xóa toàn bộ playlist';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -34,7 +35,7 @@ export class StopCommand implements BotCommand {
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage('Stopped and cleared playlist.'),
+                getTextMessage('Đã dừng và xóa toàn bộ playlist.'),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `stop`:', error);

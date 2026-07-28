@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
@@ -9,7 +9,8 @@ import { getTextMessage, getSongEmbedMessage, getUserVoiceChannel } from '@/util
 @Injectable()
 export class PlayCommand implements BotCommand {
     name = 'play';
-    isPublic = true;
+    role: CommandRole = 'elevated';
+    description = 'Phát playlist từ DB';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -31,7 +32,7 @@ export class PlayCommand implements BotCommand {
             if (!voiceChannel) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('You need to join a voice channel before using this command.'),
+                    getTextMessage('Bạn cần tham gia kênh thoại trước khi sử dụng lệnh này.'),
                 );
                 return;
             }
@@ -41,7 +42,7 @@ export class PlayCommand implements BotCommand {
             if (songs.length === 0) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Playlist is empty. Use `*dj add <link>` to add songs first.'),
+                    getTextMessage('Playlist trống. Dùng `*dj add <link>` để thêm bài hát.'),
                 );
                 return;
             }
@@ -59,14 +60,14 @@ export class PlayCommand implements BotCommand {
                 repliedMessage,
                 getSongEmbedMessage({
                     trackInfo: this.voicePlaylistService.songToTrackInfo(firstSong),
-                    description: `🎵 Now playing in "${voiceChannel.channelName}"`,
+                    description: `🎵 Đang phát trong "${voiceChannel.channelName}"`,
                     songUrl: firstSong.songUrl,
                     order: firstSong.order,
                     requestedBy: firstSong.requestedBy,
                 }),
             );
         } catch (error) {
-            console.error('❌ Error when executing command `play`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `play`:', error);
             await this.miscService.handleCommandError(ctx, error);
         }
     }

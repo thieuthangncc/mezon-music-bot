@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MiscService } from '@/modules/misc/misc.service';
 import { StreamingService } from '@/modules/streaming/streaming.service';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
@@ -7,7 +7,8 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 @Injectable()
 export class StreamCommand implements BotCommand {
     name = 'stream';
-    isPublic = true;
+    role: CommandRole = 'elevated';
+    description = 'Stream media trực tiếp';
 
     constructor(
         private readonly mcService: MezonClientService,

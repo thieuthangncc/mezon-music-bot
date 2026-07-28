@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
@@ -8,7 +8,8 @@ import { getTextMessage, getNowPlayingEmbedMessage } from '@/utils';
 @Injectable()
 export class NowCommand implements BotCommand {
     name = 'now';
-    isPublic = true;
+    role: CommandRole = 'public';
+    description = 'Xem bài hát đang phát';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -26,7 +27,7 @@ export class NowCommand implements BotCommand {
             if (!session) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bot is not playing yet. Use `*dj play` first.'),
+                    getTextMessage('Bot chưa phát nhạc. Dùng `*dj play` để phát.'),
                 );
                 return;
             }
@@ -36,7 +37,7 @@ export class NowCommand implements BotCommand {
             if (!currentSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage(`No song is playing in "${session.channelName}".`),
+                    getTextMessage(`Không có bài hát nào đang phát trong "${session.channelName}".`),
                 );
                 return;
             }
@@ -61,7 +62,7 @@ export class NowCommand implements BotCommand {
                 }),
             );
         } catch (error) {
-            console.error('❌ Error when executing command `now`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `now`:', error);
             await this.miscService.handleCommandError(ctx);
         }
     }

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { TrackInfo } from '@/utils/youtube.util';
-import type { PlaylistSong as DbPlaylistSong } from '@/_generated/prisma/client';
+import { PlaylistSong as DbPlaylistSong } from '@/_generated/prisma/client';
 
 export interface PlaylistSong {
     id: string;

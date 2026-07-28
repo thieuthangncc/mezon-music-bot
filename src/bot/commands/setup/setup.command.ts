@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { MiscService } from '@/modules/misc/misc.service';
@@ -8,7 +8,8 @@ import { getTextMessage } from '@/utils';
 @Injectable()
 export class SetupCommand implements BotCommand {
     name = 'setup';
-    isPublic = true;
+    role: CommandRole = 'elevated';
+    description = 'Khởi tạo clan và playlist';
 
     constructor(
         private readonly mezonClientService: MezonClientService,
@@ -50,7 +51,7 @@ export class SetupCommand implements BotCommand {
 
             await this.mezonClientService.updateMessage(
                 repliedMessage,
-                getTextMessage('Setup completed successfully! User, clan, and default playlist have been created.'),
+                getTextMessage('Khởi tạo thành công! User, clan và playlist mặc định đã được tạo.'),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `setup`:', error);

@@ -30,14 +30,14 @@ const buildTrackFields = (params: {
     const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
 
     fields.push({
-        name: 'Order',
+        name: 'Thứ tự',
         value: `#${params.order}`,
         inline: true,
     });
 
     if (params.trackInfo.durationSeconds) {
         fields.push({
-            name: 'Duration',
+            name: 'Thời lượng',
             value: formatDuration(params.trackInfo.durationSeconds),
             inline: true,
         });
@@ -45,7 +45,7 @@ const buildTrackFields = (params: {
 
     if (params.trackInfo.providerName) {
         fields.push({
-            name: 'Platform',
+            name: 'Nền tảng',
             value: params.trackInfo.providerName,
             inline: true,
         });
@@ -53,7 +53,7 @@ const buildTrackFields = (params: {
 
     if (params.prevTrackName !== undefined) {
         fields.push({
-            name: 'Previous',
+            name: 'Trước đó',
             value: params.prevTrackName || '—',
             inline: false,
         });
@@ -61,7 +61,7 @@ const buildTrackFields = (params: {
 
     if (params.requestedBy) {
         fields.push({
-            name: 'Requested by',
+            name: 'Yêu cầu bởi',
             value: params.requestedBy,
             inline: true,
         });
@@ -109,13 +109,13 @@ export const getNowPlayingEmbedMessage = (params: {
     const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
 
     fields.push({
-        name: 'Voice channel',
+        name: 'Kênh thoại',
         value: channelName,
         inline: true,
     });
 
     fields.push({
-        name: 'Queue',
+        name: 'Hàng đợi',
         value: `#${currentSong.order} / ${queueTotal}`,
         inline: true,
     });
@@ -127,7 +127,7 @@ export const getNowPlayingEmbedMessage = (params: {
             : '??:??';
 
         fields.push({
-            name: 'Progress',
+            name: 'Tiến trình',
             value: `${elapsed} / ${total}\n${formatProgressBar(progress.progressPercent)}`,
             inline: false,
         });
@@ -148,7 +148,7 @@ export const getNowPlayingEmbedMessage = (params: {
     }
 
     fields.push({
-        name: 'Next up',
+        name: 'Tiếp theo',
         value: nextTrackName ?? '—',
         inline: false,
     });
@@ -156,7 +156,7 @@ export const getNowPlayingEmbedMessage = (params: {
     return getEmbedMessage({
         color: getRandomPastelHexColor() as string,
         title: trackInfo.trackName,
-        description: '🎵 Now playing',
+        description: '🎵 Đang phát',
         url: currentSong.songUrl,
         author: trackInfo.authorName
             ? {
