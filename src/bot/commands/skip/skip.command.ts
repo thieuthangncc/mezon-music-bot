@@ -23,12 +23,12 @@ export class SkipCommand implements BotCommand {
 
         try {
             const clanId = event.clan_id as string;
-            const session = this.voicePlaylistService.findSessionByClanId(clanId);
+            const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
             if (!session) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bot is not playing yet. Use `*dj play <link>` first.'),
+                    getTextMessage('Bot is not playing yet. Use `*dj play` first.'),
                 );
                 return;
             }

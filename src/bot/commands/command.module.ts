@@ -11,9 +11,10 @@ import { PlaylistCommand } from './playlist/playlist.command';
 import { NowCommand } from './now/now.command';
 import { SkipCommand } from './skip/skip.command';
 import { StopCommand } from './stop/stop.command';
+import { HelpCommand } from './help/help.command';
 
 @Module({
-    providers: [CommandService, PingCommand, StreamCommand, StopstreamCommand, SetupCommand, RequestCommand, PlayCommand, AddCommand, PlaylistCommand, NowCommand, SkipCommand, StopCommand],
+    providers: [CommandService, PingCommand, StreamCommand, StopstreamCommand, SetupCommand, RequestCommand, PlayCommand, AddCommand, PlaylistCommand, NowCommand, SkipCommand, StopCommand, HelpCommand],
     exports: [CommandService],
 })
 export class CommandModule {}

@@ -23,18 +23,14 @@ export class StopCommand implements BotCommand {
 
         try {
             const clanId = event.clan_id as string;
-            const session = this.voicePlaylistService.findSessionByClanId(clanId);
+            const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
-            if (!session) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Bot is not playing yet.'),
-                );
-                return;
+            if (session) {
+                await this.voicePlaybackService.killSession(session.voiceChannelId);
+                this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
             }
 
-            this.voicePlaybackService.killSession(session.voiceChannelId);
-            this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
+            await this.voicePlaylistService.clearPlaylist(clanId);
 
             await this.mcService.updateMessage(
                 repliedMessage,
@@ -46,4 +42,3 @@ export class StopCommand implements BotCommand {
         }
     }
 }
-

@@ -15,6 +15,7 @@ import { PlaylistCommand } from './playlist/playlist.command';
 import { NowCommand } from './now/now.command';
 import { SkipCommand } from './skip/skip.command';
 import { StopCommand } from './stop/stop.command';
+import { HelpCommand } from './help/help.command';
 
 @Injectable()
 export class CommandService {
@@ -34,6 +35,7 @@ export class CommandService {
         private readonly nowCmd: NowCommand,
         private readonly skipCmd: SkipCommand,
         private readonly stopCmd: StopCommand,
+        private readonly helpCmd: HelpCommand,
     ) {
         this.register(this.pingCmd);
         this.register(this.streamCmd);
@@ -46,6 +48,7 @@ export class CommandService {
         this.register(this.nowCmd);
         this.register(this.skipCmd);
         this.register(this.stopCmd);
+        this.register(this.helpCmd);
     }
 
     register(command: BotCommand) {

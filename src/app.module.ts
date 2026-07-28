@@ -6,7 +6,6 @@ import { PrismaModule } from './libs/prisma/prisma.module';
 import { MiscModule } from './modules/misc/misc.module';
 import { StreamingModule } from './modules/streaming/streaming.module';
 import { ListenersModule } from './bot/listeners/listeners.module';
-import { RoomModule } from './modules/room/room.module';
 import { VoicePlaylistModule } from './modules/voice-playlist/voice-playlist.module';
 import { SongCacheModule } from './modules/song-cache/song-cache.module';
 
@@ -22,7 +21,6 @@ import { SongCacheModule } from './modules/song-cache/song-cache.module';
         VoicePlaylistModule,
         SongCacheModule,
         ListenersModule,
-        RoomModule,
     ],
     providers: [AppService],
 })

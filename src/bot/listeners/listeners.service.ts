@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { MezonClientService } from '@libs/mezon-client/mezon-client.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
-import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
 import { isTrigger, parseCommand } from '@/utils';
 import { CommandService } from '@/bot/commands/command.service';
 import { ChannelMessageEvent } from '@/constants';
@@ -13,7 +12,6 @@ export class ListenersService implements OnModuleInit {
     constructor(
         private readonly mezonClientService: MezonClientService,
         private readonly commandService: CommandService,
-        private readonly voicePlaylistService: VoicePlaylistService,
         private readonly voicePlaybackService: VoicePlaybackService,
     ) {}
 
@@ -52,9 +50,8 @@ export class ListenersService implements OnModuleInit {
                 return;
             }
 
-            // If we're already scheduled to advance to next track,
-            // Mezon might emit voiceLeaved while switching. Keep session alive.
-            if (this.voicePlaybackService.isAdvanceScheduled(event.voice_channel_id)) {
+            const playedNext = await this.voicePlaybackService.playNextSong(event.voice_channel_id);
+            if (playedNext) {
                 return;
             }
 

@@ -68,7 +68,7 @@ Available services (check their files for available methods):
 | `MezonClientService` | `@/libs/mezon-client/mezon-client.service` | Send/update/reply messages, fetch channels |
 | `MiscService` | `@/modules/misc/misc.service` | `sendLoadingMessage()`, `handleCommandError()` |
 | `StreamingService` | `@/modules/streaming/streaming.service` | `playStreaming()`, `stopStreaming()` |
-| `PrismaService` | `@/libs/prisma/prisma.service` | Database access (User, Clan, StreamingChannel, Playlist, PlaylistSong) |
+| `PrismaService` | `@/libs/prisma/prisma.service` | Database access (User, Clan, Playlist, PlaylistSong) |
 
 ### 4. Register the command
 

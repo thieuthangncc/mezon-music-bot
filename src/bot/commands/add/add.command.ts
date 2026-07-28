@@ -33,16 +33,6 @@ export class AddCommand implements BotCommand {
             }
 
             const clanId = event.clan_id as string;
-            const session = this.voicePlaylistService.findSessionByClanId(clanId);
-
-            if (!session) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Bot is not playing yet. Use `*dj play <link>` first.'),
-                );
-                return;
-            }
-
             const requestedBy = (event.display_name || event.username || 'Unknown') as string;
 
             const resolved = await this.songResolverService.resolve(songUrl, {
@@ -72,24 +62,20 @@ export class AddCommand implements BotCommand {
                 },
             });
 
-            const song = this.voicePlaylistService.addSong(
-                session.voiceChannelId,
+            const song = await this.voicePlaylistService.addSong(
+                clanId,
                 resolved.youtubeUrl,
                 resolved.playableUrl,
                 resolved.trackInfo,
                 requestedBy,
             );
-            const prevSong = this.voicePlaylistService.getPreviousSong(
-                session.voiceChannelId,
-                song.order,
-            );
+            const prevSong = await this.voicePlaylistService.getPreviousSongByClanId(clanId, song.order);
 
-            const cacheLabel = resolved.fromCache ? ' (from cache)' : '';
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSongEmbedMessage({
                     trackInfo: resolved.trackInfo,
-                    description: `✅ Added to playlist (#${song.order})${cacheLabel}`,
+                    description: `✅ Added to playlist (#${song.order})`,
                     songUrl: resolved.youtubeUrl,
                     order: song.order,
                     prevTrackName: prevSong?.trackName ?? '—',

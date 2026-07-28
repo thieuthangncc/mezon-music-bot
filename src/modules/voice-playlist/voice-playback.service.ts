@@ -1,41 +1,40 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { StreamingService } from '@/modules/streaming/streaming.service';
+import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
 import { VoicePlaylistService } from './voice-playlist.service';
 
-const DEFAULT_SONG_DURATION_SECONDS = 180;
-const ADVANCE_BUFFER_MS = 2_000;
-
 @Injectable()
-export class VoicePlaybackService implements OnModuleDestroy {
+export class VoicePlaybackService {
     private readonly logger = new Logger(VoicePlaybackService.name);
-    private readonly advanceTimers = new Map<string, NodeJS.Timeout>();
 
     constructor(
         private readonly voicePlaylistService: VoicePlaylistService,
         private readonly mezonClientService: MezonClientService,
         private readonly streamingService: StreamingService,
+        private readonly songResolverService: SongResolverService,
     ) {}
 
-    startSession(voiceChannelId: string, clanId: string, channelName: string) {
-        const otherSession = this.voicePlaylistService.findSessionByClanId(clanId);
+    async startSession(voiceChannelId: string, clanId: string, channelName: string) {
+        const otherSession = await this.voicePlaylistService.findSessionByClanId(clanId);
         if (otherSession && otherSession.voiceChannelId !== voiceChannelId) {
-            this.killSession(otherSession.voiceChannelId);
+            await this.killSession(otherSession.voiceChannelId);
         }
 
-        return this.voicePlaylistService.startSession(voiceChannelId, clanId, channelName);
+        await this.voicePlaylistService.setVoiceChannel(clanId, voiceChannelId, channelName);
     }
 
     async playSong(voiceChannelId: string, order: number) {
-        const session = this.voicePlaylistService.getSession(voiceChannelId);
+        const session = await this.voicePlaylistService.getSessionByVoiceChannel(voiceChannelId);
         const song = session?.songs.find((item) => item.order === order);
 
         if (!session || !song) {
             return;
         }
 
-        this.clearAdvanceTimer(voiceChannelId);
-        this.voicePlaylistService.setCurrentSong(voiceChannelId, order);
+        const playableSong = await this.ensurePlayableSong(song);
+
+        await this.voicePlaylistService.setCurrentSong(voiceChannelId, order);
 
         const botId = process.env.MEZON_BOT_ID as string;
         const botName = process.env.MEZON_BOT_NAME as string;
@@ -43,29 +42,27 @@ export class VoicePlaybackService implements OnModuleDestroy {
             .getClient()
             .channels.fetch(voiceChannelId);
 
-        await voiceChannel.playMedia(song.playableUrl, botId, botName, song.trackName);
-        this.scheduleAdvance(voiceChannelId);
+        await voiceChannel.playMedia(
+            playableSong.playableUrl,
+            botId,
+            botName,
+            playableSong.trackName,
+        );
     }
 
-    killSession(voiceChannelId: string) {
-        this.clearAdvanceTimer(voiceChannelId);
-        this.voicePlaylistService.killSession(voiceChannelId);
-    }
-
-    isAdvanceScheduled(voiceChannelId: string): boolean {
-        return this.advanceTimers.has(voiceChannelId);
+    async killSession(voiceChannelId: string) {
+        await this.voicePlaylistService.clearPlaybackState(voiceChannelId);
     }
 
     async skipCurrentSong(voiceChannelId: string) {
-        const session = this.voicePlaylistService.getSession(voiceChannelId);
+        const session = await this.voicePlaylistService.getSessionByVoiceChannel(voiceChannelId);
         if (!session) {
             return { removedSong: undefined, nextSong: undefined };
         }
 
-        this.clearAdvanceTimer(voiceChannelId);
         this.streamingService.stopStreaming({ ChannelId: voiceChannelId });
 
-        const result = this.voicePlaylistService.skipCurrentSong(voiceChannelId);
+        const result = await this.voicePlaylistService.skipCurrentSong(voiceChannelId);
 
         if (result.nextSong) {
             await this.playSong(voiceChannelId, result.nextSong.order);
@@ -74,58 +71,44 @@ export class VoicePlaybackService implements OnModuleDestroy {
         return result;
     }
 
-    onModuleDestroy() {
-        for (const voiceChannelId of this.advanceTimers.keys()) {
-            this.clearAdvanceTimer(voiceChannelId);
-        }
-    }
-
-    private scheduleAdvance(voiceChannelId: string) {
-        const currentSong = this.voicePlaylistService.getCurrentSong(voiceChannelId);
-        if (!currentSong) {
-            return;
-        }
-
-        const durationSeconds = currentSong.durationSeconds ?? DEFAULT_SONG_DURATION_SECONDS;
-        const delayMs = durationSeconds * 1000 + ADVANCE_BUFFER_MS;
-
-        const timer = setTimeout(() => {
-            this.advanceTimers.delete(voiceChannelId);
-            void this.advanceToNext(voiceChannelId);
-        }, delayMs);
-
-        this.advanceTimers.set(voiceChannelId, timer);
-    }
-
-    private async advanceToNext(voiceChannelId: string) {
-        const session = this.voicePlaylistService.getSession(voiceChannelId);
+    async playNextSong(voiceChannelId: string): Promise<boolean> {
+        const session = await this.voicePlaylistService.getSessionByVoiceChannel(voiceChannelId);
         if (!session?.currentOrder) {
-            return;
+            return false;
         }
 
-        const nextSong = this.voicePlaylistService.getNextSong(
+        const nextSong = await this.voicePlaylistService.getNextSong(
             voiceChannelId,
             session.currentOrder,
         );
-
         if (!nextSong) {
-            return;
+            return false;
         }
 
         try {
             await this.playSong(voiceChannelId, nextSong.order);
+            return true;
         } catch (error) {
             this.logger.error(`Failed to play next song in channel ${voiceChannelId}`, error);
+            return false;
         }
     }
 
-    private clearAdvanceTimer(voiceChannelId: string) {
-        const timer = this.advanceTimers.get(voiceChannelId);
-        if (!timer) {
-            return;
+    private async ensurePlayableSong(song: {
+        id: string;
+        songUrl: string;
+        playableUrl: string;
+        trackName: string;
+    }) {
+        if (song.playableUrl) {
+            return song;
         }
 
-        clearTimeout(timer);
-        this.advanceTimers.delete(voiceChannelId);
+        const resolved = await this.songResolverService.resolve(song.songUrl);
+        return this.voicePlaylistService.updateSongFromResolved(song.id, {
+            songUrl: resolved.youtubeUrl,
+            playableUrl: resolved.playableUrl,
+            trackInfo: resolved.trackInfo,
+        });
     }
 }

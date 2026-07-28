@@ -21,17 +21,17 @@ export class NowCommand implements BotCommand {
 
         try {
             const clanId = event.clan_id as string;
-            const session = this.voicePlaylistService.findSessionByClanId(clanId);
+            const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
             if (!session) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bot is not playing yet. Use `*dj playvc <link>` first.'),
+                    getTextMessage('Bot is not playing yet. Use `*dj play` first.'),
                 );
                 return;
             }
 
-            const currentSong = this.voicePlaylistService.getCurrentSong(session.voiceChannelId);
+            const currentSong = await this.voicePlaylistService.getCurrentSong(session.voiceChannelId);
 
             if (!currentSong) {
                 await this.mcService.updateMessage(
@@ -41,12 +41,13 @@ export class NowCommand implements BotCommand {
                 return;
             }
 
-            const nextSong = this.voicePlaylistService.getNextSong(
+            const nextSong = await this.voicePlaylistService.getNextSong(
                 session.voiceChannelId,
                 currentSong.order,
             );
-            const progress = this.voicePlaylistService.getPlaybackProgress(session.voiceChannelId);
+            const progress = await this.voicePlaylistService.getPlaybackProgress(session.voiceChannelId);
             const trackInfo = this.voicePlaylistService.songToTrackInfo(currentSong);
+            const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
 
             await this.mcService.updateMessage(
                 repliedMessage,
@@ -56,7 +57,7 @@ export class NowCommand implements BotCommand {
                     channelName: session.channelName,
                     progress,
                     nextTrackName: nextSong?.trackName,
-                    queueTotal: session.songs.length,
+                    queueTotal,
                 }),
             );
         } catch (error) {

@@ -4,9 +4,7 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
-import { getTextMessage, getSongEmbedMessage, extractFirstUrl } from '@/utils';
-import { ChannelType } from 'mezon-sdk';
+import { getTextMessage, getSongEmbedMessage, getUserVoiceChannel } from '@/utils';
 
 @Injectable()
 export class PlayCommand implements BotCommand {
@@ -18,42 +16,19 @@ export class PlayCommand implements BotCommand {
         private readonly miscService: MiscService,
         private readonly voicePlaylistService: VoicePlaylistService,
         private readonly voicePlaybackService: VoicePlaybackService,
-        private readonly songResolverService: SongResolverService,
     ) {}
 
     async execute(ctx: CommandContext) {
-        const { event, repliedMessage, args } = ctx;
+        const { event, repliedMessage } = ctx;
 
         try {
-            const songUrl = extractFirstUrl(event.content?.t as string) ?? args[0];
-
-            if (!songUrl) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Please provide a song link. Usage: `*dj play <link>`'),
-                );
-                return;
-            }
-
             const userId = event.sender_id as string;
             const clanId = event.clan_id as string;
             const client = this.mcService.getClient();
-            const clan = client.clans.get(clanId);
 
-            if (!clan) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Cannot find clan. Please try again later.'),
-                );
-                return;
-            }
+            const voiceChannel = await getUserVoiceChannel(client, clanId, userId);
 
-            const voiceUsers = await clan.listChannelVoiceUsers();
-            const userVoice = voiceUsers.voice_channel_users?.find(
-                (vcu) => vcu.user_ids?.includes(userId),
-            );
-
-            if (!userVoice?.channel_id) {
+            if (!voiceChannel) {
                 await this.mcService.updateMessage(
                     repliedMessage,
                     getTextMessage('You need to join a voice channel before using this command.'),
@@ -61,69 +36,33 @@ export class PlayCommand implements BotCommand {
                 return;
             }
 
-            const voiceChannel = await client.channels.fetch(userVoice.channel_id);
+            const songs = await this.voicePlaylistService.getPlaylistSongs(clanId);
 
-            if (voiceChannel.channel_type !== ChannelType.CHANNEL_TYPE_MEZON_VOICE) {
+            if (songs.length === 0) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('This channel is not a voice channel.'),
+                    getTextMessage('Playlist is empty. Use `*dj add <link>` to add songs first.'),
                 );
                 return;
             }
 
-            const channelLabel = voiceChannel.name || userVoice.channel_id;
-            const requestedBy = (event.display_name || event.username || 'Unknown') as string;
+            const firstSong = songs[0];
 
-            const resolved = await this.songResolverService.resolve(songUrl, {
-                onFetching: async () => {
-                    await this.mcService.updateMessage(
-                        repliedMessage,
-                        getTextMessage('Fetching song info from YouTube...'),
-                    );
-                },
-                onDownloading: async (title) => {
-                    await this.mcService.updateMessage(
-                        repliedMessage,
-                        getTextMessage(`Downloading "${title}"...`),
-                    );
-                },
-                onConverting: async (title) => {
-                    await this.mcService.updateMessage(
-                        repliedMessage,
-                        getTextMessage(`Converting "${title}" to OGG...`),
-                    );
-                },
-                onUploading: async (title) => {
-                    await this.mcService.updateMessage(
-                        repliedMessage,
-                        getTextMessage(`Uploading "${title}"...`),
-                    );
-                },
-            });
-
-            this.voicePlaybackService.startSession(
-                userVoice.channel_id,
+            await this.voicePlaybackService.startSession(
+                voiceChannel.channelId,
                 clanId,
-                channelLabel,
+                voiceChannel.channelName,
             );
-            const song = this.voicePlaylistService.addSong(
-                userVoice.channel_id,
-                resolved.youtubeUrl,
-                resolved.playableUrl,
-                resolved.trackInfo,
-                requestedBy,
-            );
-            await this.voicePlaybackService.playSong(userVoice.channel_id, song.order);
+            await this.voicePlaybackService.playSong(voiceChannel.channelId, firstSong.order);
 
-            const cacheLabel = resolved.fromCache ? ' (from cache)' : '';
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSongEmbedMessage({
-                    trackInfo: resolved.trackInfo,
-                    description: `🎵 Now playing in "${channelLabel}"${cacheLabel}`,
-                    songUrl: resolved.youtubeUrl,
-                    order: song.order,
-                    requestedBy,
+                    trackInfo: this.voicePlaylistService.songToTrackInfo(firstSong),
+                    description: `🎵 Now playing in "${voiceChannel.channelName}"`,
+                    songUrl: firstSong.songUrl,
+                    order: firstSong.order,
+                    requestedBy: firstSong.requestedBy,
                 }),
             );
         } catch (error) {

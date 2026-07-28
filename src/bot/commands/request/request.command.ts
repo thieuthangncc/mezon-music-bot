@@ -31,8 +31,8 @@ export class RequestCommand implements BotCommand {
 
             const clanId = event.clan_id as string;
 
-            const streamingChannel = await this.prismaService.streamingChannel.findFirst({
-                where: { clanId },
+            const clan = await this.prismaService.clan.findUnique({
+                where: { id: clanId },
                 include: {
                     playlist: {
                         include: {
@@ -45,19 +45,19 @@ export class RequestCommand implements BotCommand {
                 },
             });
 
-            if (!streamingChannel) {
+            if (!clan) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Clan is not set up for streaming. Please use `*dj setup <streaming_channel_id>` to create a streaming channel.'),
+                    getTextMessage('Clan is not set up yet. Please use `*dj setup` first.'),
                 );
                 return;
             }
 
-            const playlist = streamingChannel.playlist[0];
+            const playlist = clan.playlist;
             if (!playlist) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('No playlist found. Please use `*dj setup <streaming_channel_id>` to create a playlist.'),
+                    getTextMessage('No playlist found. Please use `*dj setup` to create a playlist.'),
                 );
                 return;
             }

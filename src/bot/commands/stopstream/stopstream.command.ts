@@ -25,10 +25,10 @@ export class StopstreamCommand implements BotCommand {
 
         try {
             const clanId = event.clan_id as string;
-            const session = this.voicePlaylistService.findSessionByClanId(clanId);
+            const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
             if (session) {
-                this.voicePlaybackService.killSession(session.voiceChannelId);
+                await this.voicePlaybackService.killSession(session.voiceChannelId);
                 this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
             }
 
