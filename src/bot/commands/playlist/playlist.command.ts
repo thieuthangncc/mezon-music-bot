@@ -30,7 +30,7 @@ export class PlaylistCommand implements BotCommand {
             if (songs.length === 0) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Playlist trống. Dùng `*dj add <link>` để thêm bài hát.'),
+                    getTextMessage('Playlist trống. Dùng `*dj req <link>` để thêm bài hát.'),
                 );
                 return;
             }

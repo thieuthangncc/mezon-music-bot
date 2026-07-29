@@ -50,12 +50,7 @@ export class ListenersService implements OnModuleInit {
                 return;
             }
 
-            const playedNext = await this.voicePlaybackService.playNextSong(event.voice_channel_id);
-            if (playedNext) {
-                return;
-            }
-
-            await this.voicePlaybackService.killSession(event.voice_channel_id);
+            await this.voicePlaybackService.handleSongFinished(event.voice_channel_id);
         });
     }
 }

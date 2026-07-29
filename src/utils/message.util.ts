@@ -2,7 +2,7 @@ import { ChannelMessageContent, IInteractiveMessageProps } from 'mezon-sdk';
 import { LOADING_EMOJI_ID } from '@/constants';
 import { getRandomPastelHexColor } from '@/utils/misc.util';
 import { formatDuration, TrackInfo } from '@/utils/youtube.util';
-import { PlaybackProgress, PlaylistSong } from '@/modules/voice-playlist/voice-playlist.service';
+import { PlaylistSong } from '@/modules/voice-playlist/voice-playlist.service';
 
 export const getTextMessage = (text: string): ChannelMessageContent => {
     return {
@@ -14,11 +14,6 @@ export const getEmbedMessage = (embed: IInteractiveMessageProps): ChannelMessage
     return {
         embed: [embed],
     };
-};
-
-export const formatProgressBar = (percent: number, length = 12): string => {
-    const filled = Math.round((percent / 100) * length);
-    return `[${'█'.repeat(filled)}${'░'.repeat(length - filled)}] ${percent}%`;
 };
 
 const buildTrackFields = (params: {
@@ -101,11 +96,10 @@ export const getNowPlayingEmbedMessage = (params: {
     currentSong: PlaylistSong;
     trackInfo: TrackInfo;
     channelName: string;
-    progress: PlaybackProgress | null;
     nextTrackName?: string;
     queueTotal: number;
 }): ChannelMessageContent => {
-    const { currentSong, trackInfo, channelName, progress, nextTrackName, queueTotal } = params;
+    const { currentSong, trackInfo, channelName, nextTrackName, queueTotal } = params;
     const fields: Array<{ name: string; value: string; inline?: boolean }> = [];
 
     fields.push({
@@ -119,19 +113,6 @@ export const getNowPlayingEmbedMessage = (params: {
         value: `#${currentSong.order} / ${queueTotal}`,
         inline: true,
     });
-
-    if (progress) {
-        const elapsed = formatDuration(progress.elapsedSeconds);
-        const total = trackInfo.durationSeconds
-            ? formatDuration(trackInfo.durationSeconds)
-            : '??:??';
-
-        fields.push({
-            name: 'Tiến trình',
-            value: `${elapsed} / ${total}\n${formatProgressBar(progress.progressPercent)}`,
-            inline: false,
-        });
-    }
 
     fields.push({
         name: 'Requested by',
@@ -156,7 +137,7 @@ export const getNowPlayingEmbedMessage = (params: {
     return getEmbedMessage({
         color: getRandomPastelHexColor() as string,
         title: trackInfo.trackName,
-        description: '🎵 Đang phát',
+        description: '🎵 Bot đang phát nhạc',
         url: currentSong.songUrl,
         author: trackInfo.authorName
             ? {
@@ -165,6 +146,7 @@ export const getNowPlayingEmbedMessage = (params: {
               }
             : undefined,
         thumbnail: trackInfo.thumbnailUrl ? { url: trackInfo.thumbnailUrl } : undefined,
+        image: { url: "https://res.cloudinary.com/q1lwsiha/image/upload/v1785292413/placidplace-equalizer-10278_512_odeznc.gif" },
         fields,
     });
 };

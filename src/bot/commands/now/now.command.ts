@@ -46,9 +46,8 @@ export class NowCommand implements BotCommand {
                 session.voiceChannelId,
                 currentSong.order,
             );
-            const progress = await this.voicePlaylistService.getPlaybackProgress(session.voiceChannelId);
-            const trackInfo = this.voicePlaylistService.songToTrackInfo(currentSong);
             const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+            const trackInfo = this.voicePlaylistService.songToTrackInfo(currentSong);
 
             await this.mcService.updateMessage(
                 repliedMessage,
@@ -56,7 +55,6 @@ export class NowCommand implements BotCommand {
                     currentSong,
                     trackInfo,
                     channelName: session.channelName,
-                    progress,
                     nextTrackName: nextSong?.trackName,
                     queueTotal,
                 }),

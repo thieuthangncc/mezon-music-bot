@@ -21,12 +21,6 @@ export interface VoiceSession {
     channelName: string;
     songs: PlaylistSong[];
     currentOrder?: number;
-    startedAt?: number;
-}
-
-export interface PlaybackProgress {
-    elapsedSeconds: number;
-    progressPercent: number;
 }
 
 @Injectable()
@@ -60,6 +54,11 @@ export class VoicePlaylistService {
         }
 
         return this.toSession(playlist);
+    }
+
+    async isPlaying(clanId: string): Promise<boolean> {
+        const playlist = await this.prisma.playlist.findUnique({ where: { clanId } });
+        return !!(playlist?.voiceChannelId && playlist.currentOrder);
     }
 
     async getSessionByVoiceChannel(voiceChannelId: string): Promise<VoiceSession | undefined> {
@@ -159,7 +158,6 @@ export class VoicePlaylistService {
             where: { id: playlist.id },
             data: {
                 currentOrder: order,
-                playbackStartedAt: new Date(),
             },
         });
     }
@@ -249,7 +247,6 @@ export class VoicePlaylistService {
             where: { id: playlist.id },
             data: {
                 currentOrder: nextDbSong?.order ?? null,
-                playbackStartedAt: nextDbSong ? new Date() : null,
             },
         });
 
@@ -257,33 +254,6 @@ export class VoicePlaylistService {
         const nextSong = nextDbSong ? this.mapSong({ ...nextDbSong, order: currentIndex + 1 }) : undefined;
 
         return { removedSong, nextSong };
-    }
-
-    async getPlaybackProgress(voiceChannelId: string): Promise<PlaybackProgress | null> {
-        const playlist = await this.prisma.playlist.findFirst({
-            where: { voiceChannelId },
-        });
-        const currentSong = await this.getCurrentSong(voiceChannelId);
-
-        if (!playlist?.playbackStartedAt || !currentSong) {
-            return null;
-        }
-
-        const elapsedSeconds = Math.max(
-            0,
-            Math.floor((Date.now() - playlist.playbackStartedAt.getTime()) / 1000),
-        );
-
-        if (!currentSong.durationSeconds) {
-            return { elapsedSeconds, progressPercent: 0 };
-        }
-
-        const progressPercent = Math.min(
-            100,
-            Math.round((elapsedSeconds / currentSong.durationSeconds) * 100),
-        );
-
-        return { elapsedSeconds, progressPercent };
     }
 
     songToTrackInfo(song: PlaylistSong): TrackInfo {
@@ -348,7 +318,6 @@ export class VoicePlaylistService {
                 voiceChannelId: null,
                 voiceChannelName: null,
                 currentOrder: null,
-                playbackStartedAt: null,
             },
         });
     }
@@ -367,7 +336,6 @@ export class VoicePlaylistService {
                     voiceChannelId: null,
                     voiceChannelName: null,
                     currentOrder: null,
-                    playbackStartedAt: null,
                 },
             }),
         ]);
@@ -379,7 +347,6 @@ export class VoicePlaylistService {
             voiceChannelId: string | null;
             voiceChannelName: string | null;
             currentOrder: number | null;
-            playbackStartedAt: Date | null;
             songs: DbPlaylistSong[];
         },
     ): VoiceSession {
@@ -389,7 +356,6 @@ export class VoicePlaylistService {
             channelName: playlist.voiceChannelName ?? playlist.voiceChannelId ?? '',
             songs: playlist.songs.map((song) => this.mapSong(song)),
             currentOrder: playlist.currentOrder ?? undefined,
-            startedAt: playlist.playbackStartedAt?.getTime(),
         };
     }
 

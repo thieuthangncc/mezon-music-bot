@@ -4,7 +4,7 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage, getSongEmbedMessage, getUserVoiceChannel } from '@/utils';
+import { getTextMessage, getSongEmbedMessage, getNowPlayingEmbedMessage, getUserVoiceChannel } from '@/utils';
 
 @Injectable()
 export class PlayCommand implements BotCommand {
@@ -37,24 +37,66 @@ export class PlayCommand implements BotCommand {
                 return;
             }
 
-            const songs = await this.voicePlaylistService.getPlaylistSongs(clanId);
+            const songs = await this.voicePlaylistService.getSongsByClanId(clanId);
 
             if (songs.length === 0) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Playlist trống. Dùng `*dj add <link>` để thêm bài hát.'),
+                    getTextMessage('Playlist trống. Dùng `*dj req <link>` để thêm bài hát.'),
+                );
+                return;
+            }
+
+            if (await this.voicePlaylistService.isPlaying(clanId)) {
+                const session = await this.voicePlaylistService.findSessionByClanId(clanId);
+                const currentSong = session
+                    ? await this.voicePlaylistService.getCurrentSong(session.voiceChannelId)
+                    : undefined;
+
+                if (currentSong && session) {
+                    const nextSong = await this.voicePlaylistService.getNextSong(
+                        session.voiceChannelId,
+                        currentSong.order,
+                    );
+                    const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+
+                    await this.mcService.updateMessage(
+                        repliedMessage,
+                        getNowPlayingEmbedMessage({
+                            currentSong,
+                            trackInfo: this.voicePlaylistService.songToTrackInfo(currentSong),
+                            channelName: session.channelName,
+                            nextTrackName: nextSong?.trackName,
+                            queueTotal,
+                        }),
+                    );
+                    return;
+                }
+
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getTextMessage('Bot đang phát nhạc. Dùng `*dj now` để xem bài hiện tại.'),
                 );
                 return;
             }
 
             const firstSong = songs[0];
 
-            await this.voicePlaybackService.startSession(
-                voiceChannel.channelId,
-                clanId,
-                voiceChannel.channelName,
-            );
-            await this.voicePlaybackService.playSong(voiceChannel.channelId, firstSong.order);
+            try {
+                await this.voicePlaybackService.startPlayback(
+                    clanId,
+                    voiceChannel.channelId,
+                    voiceChannel.channelName,
+                    firstSong.order,
+                );
+            } catch (error) {
+                console.error('❌ Lỗi khi phát nhạc:', error);
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getTextMessage('❌ Không thể phát nhạc. Vui lòng thử lại sau.'),
+                );
+                return;
+            }
 
             await this.mcService.updateMessage(
                 repliedMessage,
