@@ -40,12 +40,16 @@ export class SongResolverService {
         const normalizedUrl = normalizeUrl(youtubeUrl);
 
         if (!isYoutubeUrl(normalizedUrl)) {
-            throw new BadRequestException('Only YouTube links are supported.');
+            throw new BadRequestException(
+                '❌ Chỉ hỗ trợ link YouTube\n\n💡 Hãy gửi link YouTube hợp lệ nha.',
+            );
         }
 
         const youtubeVideoId = extractYoutubeVideoId(normalizedUrl);
         if (!youtubeVideoId) {
-            throw new BadRequestException('Cannot extract YouTube video ID from the link.');
+            throw new BadRequestException(
+                '❌ Không đọc được link YouTube\n\n💡 Hãy kiểm tra lại link và thử lại nha.',
+            );
         }
 
         const existingLock = this.resolveLocks.get(youtubeVideoId);
@@ -72,7 +76,9 @@ export class SongResolverService {
 
         const trackInfo = await getYoutubeTrackInfo(youtubeUrl);
         if (!trackInfo) {
-            throw new BadRequestException('Cannot fetch YouTube video information.');
+            throw new BadRequestException(
+                '❌ Không tìm thấy bài hát\n\n💡 Hãy thử nhập tên khác hoặc gửi link YouTube.',
+            );
         }
 
         const cachedByVideoId = await this.songCacheService.findByYoutubeVideoId(youtubeVideoId);

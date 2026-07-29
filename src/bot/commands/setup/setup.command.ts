@@ -3,12 +3,12 @@ import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { MiscService } from '@/modules/misc/misc.service';
-import { getTextMessage } from '@/utils';
+import { getSuccessMessage } from '@/utils';
 
 @Injectable()
 export class SetupCommand implements BotCommand {
     name = 'setup';
-    role: CommandRole = 'elevated';
+    role: CommandRole = 'public';
     description = 'Khởi tạo clan và playlist';
 
     constructor(
@@ -51,7 +51,10 @@ export class SetupCommand implements BotCommand {
 
             await this.mezonClientService.updateMessage(
                 repliedMessage,
-                getTextMessage('Khởi tạo thành công! User, clan và playlist mặc định đã được tạo.'),
+                getSuccessMessage(
+                    'Khởi tạo thành công rồi nè',
+                    'User, clan và playlist mặc định đã sẵn sàng.',
+                ),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `setup`:', error);

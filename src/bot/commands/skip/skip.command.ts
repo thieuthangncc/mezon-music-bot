@@ -4,7 +4,7 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage } from '@/utils';
+import { getInfoMessage, getNotPlayingMessage, getSuccessMessage } from '@/utils';
 
 @Injectable()
 export class SkipCommand implements BotCommand {
@@ -27,10 +27,7 @@ export class SkipCommand implements BotCommand {
             const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
             if (!session) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Bot chưa phát nhạc. Dùng `*dj play` để phát.'),
-                );
+                await this.mcService.updateMessage(repliedMessage, getNotPlayingMessage());
                 return;
             }
 
@@ -41,7 +38,7 @@ export class SkipCommand implements BotCommand {
             if (!removedSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Không có bài hát nào để bỏ qua.'),
+                    getInfoMessage('Không có bài hát nào để bỏ qua', 'Dùng `*dj req <link>` để thêm bài nha.'),
                 );
                 return;
             }
@@ -49,15 +46,19 @@ export class SkipCommand implements BotCommand {
             if (!nextSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage(`Đã bỏ qua "${removedSong.trackName}". Playlist hiện đang trống.`),
+                    getSuccessMessage(
+                        `Đã bỏ qua "${removedSong.trackName}"`,
+                        'Playlist hiện đang trống.',
+                    ),
                 );
                 return;
             }
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage(
-                    `Đã bỏ qua "${removedSong.trackName}". Đang phát "${nextSong.trackName}".`,
+                getSuccessMessage(
+                    `Đã bỏ qua "${removedSong.trackName}"`,
+                    `Đang phát: ${nextSong.trackName}`,
                 ),
             );
         } catch (error) {

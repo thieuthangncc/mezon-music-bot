@@ -4,7 +4,7 @@ import { MiscService } from '@/modules/misc/misc.service';
 import { StreamingService } from '@/modules/streaming/streaming.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage } from '@/utils';
+import { getSuccessMessage } from '@/utils';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 
 @Injectable()
@@ -37,7 +37,10 @@ export class StopstreamCommand implements BotCommand {
                 ChannelId: session?.voiceChannelId ?? '2079770751530962944',
             });
 
-            await this.mcService.updateMessage(repliedMessage, getTextMessage('Đã dừng stream.'));
+            await this.mcService.updateMessage(
+                repliedMessage,
+                getSuccessMessage('Đã dừng stream', 'Dùng `*dj play` để phát nhạc nha.'),
+            );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `stopstream`:', error);
             await this.miscService.handleCommandError(ctx);

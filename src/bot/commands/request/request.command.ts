@@ -4,7 +4,7 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
 import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
-import { getTextMessage, getSongEmbedMessage, getEmbedMessage, getRandomPastelHexColor, getYoutubeTrackInfo, extractFirstUrl } from '@/utils';
+import { getTextMessage, getSongEmbedMessage, getEmbedMessage, getRandomPastelHexColor, getYoutubeTrackInfo, extractFirstUrl, getErrorMessage } from '@/utils';
 
 @Injectable()
 export class RequestCommand implements BotCommand {
@@ -28,7 +28,10 @@ export class RequestCommand implements BotCommand {
             if (!songUrl) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Vui lòng cung cấp link bài hát. Ví dụ: `*dj add <link>`'),
+                    getErrorMessage(
+                        'Chưa có link bài hát',
+                        'Hãy gửi link YouTube. Ví dụ: `*dj req <link>`',
+                    ),
                 );
                 return;
             }
@@ -61,14 +64,21 @@ export class RequestCommand implements BotCommand {
                 requestedBy,
             );
             const prevSong = await this.voicePlaylistService.getPreviousSongByClanId(clanId, song.order);
+            const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
 
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSongEmbedMessage({
                     trackInfo: resolved.trackInfo,
-                    description: `✅ Đã thêm bài hát (#${song.order})`,
+                    description: [
+                        '🎵 Đã thêm bài hát vào hàng đợi',
+                        '',
+                        `✨ Vị trí: #${song.order}`,
+                        `📋 Hàng đợi hiện có ${queueTotal} bài`,
+                    ].join('\n'),
                     songUrl: resolved.youtubeUrl,
                     order: song.order,
+                    queueTotal,
                     prevTrackName: prevSong?.trackName ?? '—',
                     requestedBy,
                 }),

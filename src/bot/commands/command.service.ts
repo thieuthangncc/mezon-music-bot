@@ -1,4 +1,5 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { getErrorMessage } from '@/utils';
 import { BotCommand } from './command.interface';
 import { ChannelMessageEvent } from '@/constants';
 import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
@@ -71,9 +72,11 @@ export class CommandService {
             const normalizedCommand = (commandName || '').trim();
 
             if (!normalizedCommand) {
-                await this.mcService.replyMessage(channelId, messageId, {
-                    t: 'Bạn chưa nhập lệnh. Ví dụ: *mz ping',
-                });
+                await this.mcService.replyMessage(
+                    channelId,
+                    messageId,
+                    getErrorMessage('Bạn chưa nhập lệnh', 'Ví dụ: `*dj help`'),
+                );
                 return;
             }
 
@@ -82,9 +85,13 @@ export class CommandService {
                 messageId,
             );
             if (!message?.message_id) {
-                await this.mcService.sendChannelMessage(channelId, {
-                    t: 'Không thể phản hồi vào tin nhắn này, vui lòng thử lại.',
-                });
+                await this.mcService.sendChannelMessage(
+                    channelId,
+                    getErrorMessage(
+                        'Không thể phản hồi tin nhắn này',
+                        'Hãy thử gửi lại lệnh nha.',
+                    ),
+                );
                 return;
             }
             const channel = await this.mcService.getClient().channels.fetch(channelId);
@@ -94,9 +101,10 @@ export class CommandService {
             const command = this.commands.get(normalizedCommand);
 
             if (!command) {
-                await this.mcService.updateMessage(repliedMessage, {
-                    t: '❓ Lệnh không tồn tại! Vui lòng thử lại!',
-                });
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getErrorMessage('Lệnh không tồn tại', 'Dùng `*dj help` để xem danh sách lệnh nha.'),
+                );
                 return;
             }
 
@@ -109,9 +117,13 @@ export class CommandService {
                 });
 
                 if (!clan) {
-                    await this.mcService.updateMessage(repliedMessage, {
-                        t: 'Clan chưa được thiết lập. Vui lòng liên hệ chủ sở hữu.',
-                    });
+                    await this.mcService.updateMessage(
+                        repliedMessage,
+                        getErrorMessage(
+                            'Clan chưa được thiết lập',
+                            'Liên hệ chủ sở hữu hoặc dùng `*dj setup` nha.',
+                        ),
+                    );
                     return;
                 }
 
@@ -119,9 +131,13 @@ export class CommandService {
                 const isMod = clan.moderatorIds.includes(senderId);
 
                 if (!isOwner && !isMod) {
-                    await this.mcService.updateMessage(repliedMessage, {
-                        t: 'Bạn không có quyền sử dụng lệnh này. Lệnh này chỉ dành cho chủ sở hữu và người quản lý.',
-                    });
+                    await this.mcService.updateMessage(
+                        repliedMessage,
+                        getErrorMessage(
+                            'Bạn không có quyền dùng lệnh này',
+                            'Lệnh này chỉ dành cho chủ sở hữu và người quản lý nha.',
+                        ),
+                    );
                     return;
                 }
             }

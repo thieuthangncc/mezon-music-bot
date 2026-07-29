@@ -4,7 +4,7 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage } from '@/utils';
+import { getSuccessMessage } from '@/utils';
 
 @Injectable()
 export class StopCommand implements BotCommand {
@@ -35,7 +35,7 @@ export class StopCommand implements BotCommand {
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage('Đã dừng và xóa toàn bộ playlist.'),
+                getSuccessMessage('Đã dừng và xóa toàn bộ playlist', 'Dùng `*dj play` để phát lại nha.'),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `stop`:', error);
