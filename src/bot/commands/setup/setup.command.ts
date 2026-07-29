@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { MiscService } from '@/modules/misc/misc.service';
@@ -8,7 +8,8 @@ import { getTextMessage } from '@/utils';
 @Injectable()
 export class SetupCommand implements BotCommand {
     name = 'setup';
-    isPublic = true;
+    role: CommandRole = 'elevated';
+    description = 'Khởi tạo clan và playlist';
 
     constructor(
         private readonly mezonClientService: MezonClientService,
@@ -17,18 +18,9 @@ export class SetupCommand implements BotCommand {
     ) {}
 
     async execute(ctx: CommandContext) {
-        const { event, repliedMessage, args } = ctx;
+        const { event, repliedMessage } = ctx;
 
         try {
-            const streamingChannelId = args[0];
-            if (!streamingChannelId) {
-                await this.mezonClientService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Please provide a streaming channel ID. Usage: `*dj setup <streaming_channel_id>`'),
-                );
-                return;
-            }
-
             const userId = event.sender_id as string;
             const clanId = event.clan_id as string;
             const username = (event.username || event.display_name) as string;
@@ -44,57 +36,22 @@ export class SetupCommand implements BotCommand {
                 await tx.clan.upsert({
                     where: { id: clanId },
                     update: { ownerId: userId },
-                    create: { id: clanId, ownerId: userId },
+                    create: { id: clanId, ownerId: userId, moderatorIds: [] },
                 });
 
-                const oldChannel = await tx.streamingChannel.findFirst({
+                await tx.playlist.upsert({
                     where: { clanId },
+                    update: {},
+                    create: {
+                        id: `${clanId}-playlist`,
+                        clanId,
+                    },
                 });
-
-                if (oldChannel && oldChannel.id !== streamingChannelId) {
-                    const oldPlaylists = await tx.playlist.findMany({
-                        where: { streamingChannelId: oldChannel.id },
-                        select: { id: true },
-                    });
-
-                    for (const pl of oldPlaylists) {
-                        await tx.playlistSong.deleteMany({
-                            where: { playlistId: pl.id },
-                        });
-                    }
-
-                    await tx.playlist.deleteMany({
-                        where: { streamingChannelId: oldChannel.id },
-                    });
-
-                    await tx.streamingChannel.delete({
-                        where: { id: oldChannel.id },
-                    });
-                }
-
-                await tx.streamingChannel.upsert({
-                    where: { id: streamingChannelId },
-                    update: { clanId },
-                    create: { id: streamingChannelId, clanId },
-                });
-
-                const existingPlaylist = await tx.playlist.findFirst({
-                    where: { streamingChannelId },
-                });
-
-                if (!existingPlaylist) {
-                    await tx.playlist.create({
-                        data: {
-                            id: `${streamingChannelId}-playlist`,
-                            streamingChannelId,
-                        },
-                    });
-                }
             });
 
             await this.mezonClientService.updateMessage(
                 repliedMessage,
-                getTextMessage('Setup completed successfully! User, clan, channel, and default playlist have been created.'),
+                getTextMessage('Khởi tạo thành công! User, clan và playlist mặc định đã được tạo.'),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `setup`:', error);

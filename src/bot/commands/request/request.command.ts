@@ -1,85 +1,81 @@
 import { Injectable } from '@nestjs/common';
-import { BotCommand, CommandContext } from '../command.interface';
+import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
-import { PrismaService } from '@/libs/prisma/prisma.service';
 import { MiscService } from '@/modules/misc/misc.service';
-import { getTextMessage } from '@/utils';
+import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
+import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
+import { getTextMessage, getSongEmbedMessage, getEmbedMessage, getRandomPastelHexColor, getYoutubeTrackInfo, extractFirstUrl } from '@/utils';
 
 @Injectable()
 export class RequestCommand implements BotCommand {
     name = 'req';
-    isPublic = true;
+    role: CommandRole = 'public';
+    description = 'Thêm bài hát vào playlist';
 
     constructor(
         private readonly mcService: MezonClientService,
-        private readonly prismaService: PrismaService,
         private readonly miscService: MiscService,
+        private readonly voicePlaylistService: VoicePlaylistService,
+        private readonly songResolverService: SongResolverService,
     ) {}
 
     async execute(ctx: CommandContext) {
         const { event, repliedMessage, args } = ctx;
 
         try {
-            const songUrl = args[0];
+            const songUrl = extractFirstUrl(event.content?.t as string) ?? args[0];
+
             if (!songUrl) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Please provide a song link. Usage: `*dj req <link>`'),
+                    getTextMessage('Vui lòng cung cấp link bài hát. Ví dụ: `*dj add <link>`'),
                 );
                 return;
             }
 
             const clanId = event.clan_id as string;
+            const requestedBy = (event.display_name || event.username || 'Unknown') as string;
 
-            const streamingChannel = await this.prismaService.streamingChannel.findFirst({
-                where: { clanId },
-                include: {
-                    playlist: {
-                        include: {
-                            songs: {
-                                orderBy: { order: 'desc' },
-                                take: 1,
-                            },
-                        },
-                    },
-                },
-            });
-
-            if (!streamingChannel) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Clan is not set up for streaming. Please use `*dj setup <streaming_channel_id>` to create a streaming channel.'),
-                );
-                return;
-            }
-
-            const playlist = streamingChannel.playlist[0];
-            if (!playlist) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('No playlist found. Please use `*dj setup <streaming_channel_id>` to create a playlist.'),
-                );
-                return;
-            }
-
-            const nextOrder = playlist.songs.length > 0 ? playlist.songs[0].order + 1 : 1;
-
-            await this.prismaService.playlistSong.create({
-                data: {
-                    id: `${playlist.id}-song-${nextOrder}`,
-                    playlistId: playlist.id,
-                    songUrl,
-                    order: nextOrder,
-                },
-            });
+            const trackInfo = await getYoutubeTrackInfo(songUrl);
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage(`Song added to playlist (#${nextOrder}). Link: ${songUrl}`),
+                getEmbedMessage({
+                    color: getRandomPastelHexColor(),
+                    title: trackInfo?.trackName ?? '🎵 Đang thêm bài vào danh sách...',
+                    description: '⏳ Đang thêm bài hát, vui lòng đợi...',
+                    thumbnail: trackInfo?.thumbnailUrl ? { url: trackInfo.thumbnailUrl } : undefined,
+                    author: trackInfo?.authorName
+                        ? { name: trackInfo.authorName, url: trackInfo.authorUrl }
+                        : undefined,
+                }),
+            );
+
+            const resolved = await this.songResolverService.resolve(songUrl);
+
+            const song = await this.voicePlaylistService.addSong(
+                clanId,
+                resolved.youtubeUrl,
+                resolved.playableUrl,
+                resolved.trackInfo,
+                requestedBy,
+            );
+            const prevSong = await this.voicePlaylistService.getPreviousSongByClanId(clanId, song.order);
+
+            await this.mcService.updateMessage(
+                repliedMessage,
+                getSongEmbedMessage({
+                    trackInfo: resolved.trackInfo,
+                    description: `✅ Đã thêm bài hát (#${song.order})`,
+                    songUrl: resolved.youtubeUrl,
+                    order: song.order,
+                    prevTrackName: prevSong?.trackName ?? '—',
+                    requestedBy,
+                }),
             );
         } catch (error) {
-            console.error('❌ Lỗi khi thực hiện lệnh `req`:', error);
-            await this.miscService.handleCommandError(ctx);
+            console.error('❌ Lỗi khi thực hiện lệnh `add`:', error);
+            await this.miscService.handleCommandError(ctx, error);
         }
     }
 }

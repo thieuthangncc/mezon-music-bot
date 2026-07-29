@@ -21,10 +21,15 @@ export function parseCommand(content: string): ParsedCommand {
         .split(/\s+/)
         .filter((part) => part.length > 0);
     const commandName = (parts[1] || '').toLowerCase();
-    const args = parts.slice(2).map((arg) => arg.toLowerCase());
+    const args = parts.slice(2);
 
     return {
         commandName,
         args,
     };
+}
+
+export function extractFirstUrl(text: string): string | null {
+    const match = text.match(/https?:\/\/[^\s<>]+/i);
+    return match?.[0] ?? null;
 }
