@@ -257,3 +257,30 @@ export const getInteralErrorMessage = (): ChannelMessageContent => {
         'Vui lòng thử lại sau hoặc liên hệ admin (thang.thieuquang) nha.',
     );
 };
+
+export const getSongSuggestionEmbedMessage = (params: {
+    query: string;
+    intro: string;
+    suggestions: Array<{ title: string; artist: string; reason?: string; url?: string }>;
+}): ChannelMessageContent => {
+    const songLines = params.suggestions.flatMap((song, index) => {
+        const lines = [`**${index + 1}.** ${song.title} - ${song.artist}`];
+        if (song.url) {
+            lines.push(song.url);
+        }
+        return [...lines, ''];
+    });
+
+    return getEmbedMessage({
+        color: getRandomPastelHexColor() as string,
+        title: '🎵 Gợi ý bài hát',
+        description: [
+            `💬 ${params.intro}`,
+            '',
+            `🔍 *"${params.query}"*`,
+            '',
+            ...songLines,
+            '💡 Gửi `*dj req <link>` để thêm vào queue nha~',
+        ].join('\n'),
+    });
+};

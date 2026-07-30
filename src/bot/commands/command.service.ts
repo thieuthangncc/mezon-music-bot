@@ -1,11 +1,12 @@
 import { Injectable, Inject, forwardRef } from '@nestjs/common';
-import { getErrorMessage } from '@/utils';
+import { extractQueryAfterPrefix, getErrorMessage, getSongSuggestionEmbedMessage } from '@/utils';
 import { BotCommand } from './command.interface';
 import { ChannelMessageEvent } from '@/constants';
 import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
 import { MiscService } from '@/modules/misc/misc.service';
 import { MezonClientService } from '@libs/mezon-client/mezon-client.service';
 import { PrismaService } from '@/libs/prisma/prisma.service';
+import { AiContentService } from '@/modules/ai/ai-content.service';
 import { StreamCommand } from './stream/stream.command';
 import { StopstreamCommand } from './stopstream/stopstream.command';
 import { SetupCommand } from './setup/setup.command';
@@ -40,6 +41,7 @@ export class CommandService {
         @Inject(forwardRef(() => HelpCommand))
         private readonly helpCmd: HelpCommand,
         private readonly grantPermissionCmd: GrantPermissionCommand,
+        private readonly aiContentService: AiContentService,
     ) {
         this.register(this.streamCmd);
         this.register(this.stopstreamCmd);
@@ -104,10 +106,8 @@ export class CommandService {
             const command = this.commands.get(normalizedCommand);
 
             if (!command) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getErrorMessage('Lệnh không tồn tại', 'Dùng `*dj help` để xem danh sách lệnh nha.'),
-                );
+                const query = extractQueryAfterPrefix(event.content?.t as string);
+                await this.handleSongSuggestion(repliedMessage, query);
                 return;
             }
 
@@ -150,5 +150,31 @@ export class CommandService {
             console.error('❌ Lỗi khi thực hiện lệnh `', commandName, '` | root:', error);
             this.miscService.handleCommandError({ event, repliedMessage: repliedMessage!, args });
         }
+    }
+
+    private async handleSongSuggestion(repliedMessage: Message, query: string) {
+        if (!query) {
+            await this.mcService.updateMessage(
+                repliedMessage,
+                getErrorMessage('Bạn chưa nhập lệnh', 'Ví dụ: `*dj help` hoặc `*dj nhạc chill buồn`'),
+            );
+            return;
+        }
+
+        const result = await this.aiContentService.suggestSongs(query);
+
+        if (!result?.isMusicRelated) {
+            await repliedMessage.update(getErrorMessage('Không tìm thấy bài hát liên quan', 'Vui lòng thử lại với từ khóa khác nhé.'));
+            return;
+        }
+
+        await this.mcService.updateMessage(
+            repliedMessage,
+            getSongSuggestionEmbedMessage({
+                query,
+                intro: result.intro ?? '🎧 MeEm pick cho bạn mấy bài này nè~',
+                suggestions: result.suggestions,
+            }),
+        );
     }
 }

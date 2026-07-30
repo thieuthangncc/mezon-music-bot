@@ -46,6 +46,8 @@ export class HelpCommand implements BotCommand {
                 lines.push(`\`*dj ${cmd.name}\` - ${cmd.description}`);
             }
 
+            lines.push('`*dj <mô tả vibe/mood>*` - Gợi ý bài hát bằng AI');
+
             const embed = getEmbedMessage({
                 color: '#f6a6c1',
                 title: `ℹ️ ${process.env.MEZON_BOT_NAME} - Danh sách lệnh`,
