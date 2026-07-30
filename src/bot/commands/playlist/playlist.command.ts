@@ -26,6 +26,7 @@ export class PlaylistCommand implements BotCommand {
             const clanId = event.clan_id as string;
             const songs = await this.voicePlaylistService.getSongsByClanId(clanId, PLAYLIST_LIMIT);
             const total = await this.voicePlaylistService.getSongCount(clanId);
+            const unplayedTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
 
             if (songs.length === 0) {
                 await this.mcService.updateMessage(repliedMessage, getEmptyPlaylistMessage());
@@ -37,6 +38,7 @@ export class PlaylistCommand implements BotCommand {
                 getQueueEmbedMessage({
                     songs,
                     total,
+                    unplayedTotal,
                     limit: PLAYLIST_LIMIT,
                 }),
             );

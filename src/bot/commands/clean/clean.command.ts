@@ -2,21 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
-import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getSuccessMessage } from '@/utils';
+import { getInfoMessage, getSuccessMessage } from '@/utils';
 
 @Injectable()
-export class StopCommand implements BotCommand {
-    name = 'stop';
+export class CleanCommand implements BotCommand {
+    name = 'clean';
     role: CommandRole = 'elevated';
-    description = 'Dừng phát nhạc';
+    description = 'Xóa các bài đã phát khỏi playlist';
 
     constructor(
         private readonly mcService: MezonClientService,
         private readonly miscService: MiscService,
         private readonly voicePlaylistService: VoicePlaylistService,
-        private readonly voicePlaybackService: VoicePlaybackService,
     ) {}
 
     async execute(ctx: CommandContext) {
@@ -24,19 +22,25 @@ export class StopCommand implements BotCommand {
 
         try {
             const clanId = event.clan_id as string;
-            const session = await this.voicePlaylistService.findSessionByClanId(clanId);
+            const removedCount = await this.voicePlaylistService.cleanPlayedSongs(clanId);
 
-            if (session) {
-                await this.voicePlaybackService.killSession(session.voiceChannelId);
-                this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
+            if (removedCount === 0) {
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getInfoMessage('Không có bài nào đã phát để dọn', 'Playlist vẫn giữ nguyên nha.'),
+                );
+                return;
             }
 
             await this.mcService.updateMessage(
                 repliedMessage,
-                getSuccessMessage('Đã dừng phát nhạc', 'Dùng `*dj play` để tiếp tục phát nha.'),
+                getSuccessMessage(
+                    `Đã dọn ${removedCount} bài đã phát`,
+                    'Các bài chưa phát vẫn còn trong hàng đợi.',
+                ),
             );
         } catch (error) {
-            console.error('❌ Lỗi khi thực hiện lệnh `stop`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `clean`:', error);
             await this.miscService.handleCommandError(ctx, error);
         }
     }

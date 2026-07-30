@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { TrackInfo } from '@/utils/youtube.util';
-import { PlaylistSong as DbPlaylistSong } from '@/_generated/prisma/client';
+import { CachedSong, PlaylistSong as DbPlaylistSong } from '@/_generated/prisma/client';
+
+const songInclude = { cachedSong: true } as const;
+
+type DbPlaylistSongWithCache = DbPlaylistSong & { cachedSong: CachedSong };
 
 export interface PlaylistSong {
     id: string;
+    cachedSongId: string;
     songUrl: string;
     playableUrl: string;
     trackName: string;
@@ -13,6 +18,7 @@ export interface PlaylistSong {
     durationSeconds?: number;
     requestedBy: string;
     order: number;
+    isPlayed: boolean;
 }
 
 export interface VoiceSession {
@@ -45,7 +51,7 @@ export class VoicePlaylistService {
         const playlist = await this.prisma.playlist.findUnique({
             where: { clanId },
             include: {
-                songs: { orderBy: { order: 'asc' } },
+                songs: { orderBy: { order: 'asc' }, include: songInclude },
             },
         });
 
@@ -65,7 +71,7 @@ export class VoicePlaylistService {
         const playlist = await this.prisma.playlist.findFirst({
             where: { voiceChannelId },
             include: {
-                songs: { orderBy: { order: 'asc' } },
+                songs: { orderBy: { order: 'asc' }, include: songInclude },
             },
         });
 
@@ -90,9 +96,7 @@ export class VoicePlaylistService {
 
     async addSong(
         clanId: string,
-        songUrl: string,
-        playableUrl: string,
-        trackInfo: TrackInfo,
+        cachedSongId: string,
         requestedBy: string,
     ): Promise<PlaylistSong> {
         const playlist = await this.ensurePlaylist(clanId);
@@ -108,41 +112,14 @@ export class VoicePlaylistService {
             data: {
                 id: `${playlist.id}-song-${order}`,
                 playlistId: playlist.id,
-                songUrl,
-                playableUrl,
-                title: trackInfo.trackName,
-                thumbnailUrl: trackInfo.thumbnailUrl,
-                authorName: trackInfo.authorName,
-                durationSeconds: trackInfo.durationSeconds,
+                cachedSongId,
                 requestedBy,
                 order,
             },
+            include: songInclude,
         });
 
         return this.mapSong(created);
-    }
-
-    async updateSongFromResolved(
-        songId: string,
-        data: {
-            songUrl: string;
-            playableUrl: string;
-            trackInfo: TrackInfo;
-        },
-    ) {
-        const updated = await this.prisma.playlistSong.update({
-            where: { id: songId },
-            data: {
-                songUrl: data.songUrl,
-                playableUrl: data.playableUrl,
-                title: data.trackInfo.trackName,
-                thumbnailUrl: data.trackInfo.thumbnailUrl,
-                authorName: data.trackInfo.authorName,
-                durationSeconds: data.trackInfo.durationSeconds,
-            },
-        });
-
-        return this.mapSong(updated);
     }
 
     async setCurrentSong(voiceChannelId: string, order: number) {
@@ -173,29 +150,45 @@ export class VoicePlaylistService {
     }
 
     async getPreviousSongByClanId(clanId: string, currentOrder: number): Promise<PlaylistSong | undefined> {
-        const playlist = await this.prisma.playlist.findUnique({
-            where: { clanId },
-            include: {
-                songs: { orderBy: { order: 'asc' } },
+        const song = await this.prisma.playlistSong.findFirst({
+            where: {
+                playlist: { clanId },
+                order: currentOrder - 1,
             },
+            include: songInclude,
         });
 
-        return playlist?.songs
-            .map((song) => this.mapSong(song))
-            .find((song) => song.order === currentOrder - 1);
+        return song ? this.mapSong(song) : undefined;
     }
 
-    async getNextSongByClanId(clanId: string, currentOrder: number): Promise<PlaylistSong | undefined> {
-        const playlist = await this.prisma.playlist.findUnique({
-            where: { clanId },
-            include: {
-                songs: { orderBy: { order: 'asc' } },
+    async getNextUnplayedSongByClanId(
+        clanId: string,
+        afterOrder: number,
+    ): Promise<PlaylistSong | undefined> {
+        const song = await this.prisma.playlistSong.findFirst({
+            where: {
+                playlist: { clanId },
+                isPlayed: false,
+                order: { gt: afterOrder },
             },
+            orderBy: { order: 'asc' },
+            include: songInclude,
         });
 
-        return playlist?.songs
-            .map((song) => this.mapSong(song))
-            .find((song) => song.order === currentOrder + 1);
+        return song ? this.mapSong(song) : undefined;
+    }
+
+    async getFirstUnplayedSong(clanId: string): Promise<PlaylistSong | undefined> {
+        const song = await this.prisma.playlistSong.findFirst({
+            where: {
+                playlist: { clanId },
+                isPlayed: false,
+            },
+            orderBy: { order: 'asc' },
+            include: songInclude,
+        });
+
+        return song ? this.mapSong(song) : undefined;
     }
 
     async getPreviousSong(voiceChannelId: string, currentOrder: number): Promise<PlaylistSong | undefined> {
@@ -203,19 +196,22 @@ export class VoicePlaylistService {
         return session?.songs.find((song) => song.order === currentOrder - 1);
     }
 
-    async getNextSong(voiceChannelId: string, currentOrder: number): Promise<PlaylistSong | undefined> {
+    async getNextUnplayedSong(
+        voiceChannelId: string,
+        afterOrder: number,
+    ): Promise<PlaylistSong | undefined> {
         const session = await this.getSessionByVoiceChannel(voiceChannelId);
-        return session?.songs.find((song) => song.order === currentOrder + 1);
+        return session?.songs.find((song) => !song.isPlayed && song.order > afterOrder);
     }
 
-    async skipCurrentSong(voiceChannelId: string): Promise<{
-        removedSong?: PlaylistSong;
+    async markCurrentSongAsPlayed(voiceChannelId: string): Promise<{
+        playedSong?: PlaylistSong;
         nextSong?: PlaylistSong;
     }> {
         const playlist = await this.prisma.playlist.findFirst({
             where: { voiceChannelId },
             include: {
-                songs: { orderBy: { order: 'asc' } },
+                songs: { orderBy: { order: 'asc' }, include: songInclude },
             },
         });
 
@@ -229,31 +225,31 @@ export class VoicePlaylistService {
             return {};
         }
 
-        const removedDbSong = playlist.songs[currentIndex];
-        await this.prisma.playlistSong.delete({ where: { id: removedDbSong.id } });
-
-        const remaining = playlist.songs.filter((song) => song.id !== removedDbSong.id);
-        await Promise.all(
-            remaining.map((song, index) =>
-                this.prisma.playlistSong.update({
-                    where: { id: song.id },
-                    data: { order: index + 1 },
-                }),
-            ),
-        );
-
-        const nextDbSong = remaining[currentIndex];
-        await this.prisma.playlist.update({
-            where: { id: playlist.id },
-            data: {
-                currentOrder: nextDbSong?.order ?? null,
-            },
+        const currentDbSong = playlist.songs[currentIndex];
+        const playedDbSong = await this.prisma.playlistSong.update({
+            where: { id: currentDbSong.id },
+            data: { isPlayed: true },
+            include: songInclude,
         });
 
-        const removedSong = this.mapSong(removedDbSong);
-        const nextSong = nextDbSong ? this.mapSong({ ...nextDbSong, order: currentIndex + 1 }) : undefined;
+        const nextDbSong = playlist.songs.find(
+            (song) => !song.isPlayed && song.id !== currentDbSong.id && song.order > currentOrder,
+        );
 
-        return { removedSong, nextSong };
+        return {
+            playedSong: this.mapSong(playedDbSong),
+            nextSong: nextDbSong ? this.mapSong(nextDbSong) : undefined,
+        };
+    }
+
+    async markSongAsPlayed(songId: string): Promise<PlaylistSong> {
+        const updated = await this.prisma.playlistSong.update({
+            where: { id: songId },
+            data: { isPlayed: true },
+            include: songInclude,
+        });
+
+        return this.mapSong(updated);
     }
 
     songToTrackInfo(song: PlaylistSong): TrackInfo {
@@ -272,11 +268,23 @@ export class VoicePlaylistService {
                 songs: {
                     orderBy: { order: 'asc' },
                     take: limit,
+                    include: songInclude,
                 },
             },
         });
 
         return playlist?.songs.map((song) => this.mapSong(song)) ?? [];
+    }
+
+    async getUnplayedSongCount(clanId: string): Promise<number> {
+        const playlist = await this.prisma.playlist.findUnique({ where: { clanId } });
+        if (!playlist) {
+            return 0;
+        }
+
+        return this.prisma.playlistSong.count({
+            where: { playlistId: playlist.id, isPlayed: false },
+        });
     }
 
     async getSongCount(clanId: string): Promise<number> {
@@ -292,7 +300,7 @@ export class VoicePlaylistService {
         const playlist = await this.prisma.playlist.findUnique({
             where: { clanId },
             include: {
-                songs: { orderBy: { order: 'asc' } },
+                songs: { orderBy: { order: 'asc' }, include: songInclude },
             },
         });
 
@@ -322,23 +330,17 @@ export class VoicePlaylistService {
         });
     }
 
-    async clearPlaylist(clanId: string) {
+    async cleanPlayedSongs(clanId: string): Promise<number> {
         const playlist = await this.prisma.playlist.findUnique({ where: { clanId } });
         if (!playlist) {
-            return;
+            return 0;
         }
 
-        await this.prisma.$transaction([
-            this.prisma.playlistSong.deleteMany({ where: { playlistId: playlist.id } }),
-            this.prisma.playlist.update({
-                where: { id: playlist.id },
-                data: {
-                    voiceChannelId: null,
-                    voiceChannelName: null,
-                    currentOrder: null,
-                },
-            }),
-        ]);
+        const result = await this.prisma.playlistSong.deleteMany({
+            where: { playlistId: playlist.id, isPlayed: true },
+        });
+
+        return result.count;
     }
 
     private toSession(
@@ -347,7 +349,7 @@ export class VoicePlaylistService {
             voiceChannelId: string | null;
             voiceChannelName: string | null;
             currentOrder: number | null;
-            songs: DbPlaylistSong[];
+            songs: DbPlaylistSongWithCache[];
         },
     ): VoiceSession {
         return {
@@ -359,17 +361,19 @@ export class VoicePlaylistService {
         };
     }
 
-    private mapSong(song: DbPlaylistSong): PlaylistSong {
+    private mapSong(song: DbPlaylistSongWithCache): PlaylistSong {
         return {
             id: song.id,
-            songUrl: song.songUrl,
-            playableUrl: song.playableUrl ?? '',
-            trackName: song.title ?? song.songUrl,
-            thumbnailUrl: song.thumbnailUrl ?? undefined,
-            authorName: song.authorName ?? undefined,
-            durationSeconds: song.durationSeconds ?? undefined,
+            cachedSongId: song.cachedSongId,
+            songUrl: song.cachedSong.youtubeUrl,
+            playableUrl: song.cachedSong.oggUrl,
+            trackName: song.cachedSong.title,
+            thumbnailUrl: song.cachedSong.thumbnailUrl ?? undefined,
+            authorName: song.cachedSong.authorName ?? undefined,
+            durationSeconds: song.cachedSong.durationSeconds ?? undefined,
             requestedBy: song.requestedBy ?? 'Unknown',
             order: song.order,
+            isPlayed: song.isPlayed,
         };
     }
 }

@@ -15,6 +15,7 @@ import { PlaylistCommand } from './playlist/playlist.command';
 import { NowCommand } from './now/now.command';
 import { SkipCommand } from './skip/skip.command';
 import { StopCommand } from './stop/stop.command';
+import { CleanCommand } from './clean/clean.command';
 import { HelpCommand } from './help/help.command';
 import { GrantPermissionCommand } from './grant-permission/grant-permission.command';
 
@@ -35,6 +36,7 @@ export class CommandService {
         private readonly nowCmd: NowCommand,
         private readonly skipCmd: SkipCommand,
         private readonly stopCmd: StopCommand,
+        private readonly cleanCmd: CleanCommand,
         @Inject(forwardRef(() => HelpCommand))
         private readonly helpCmd: HelpCommand,
         private readonly grantPermissionCmd: GrantPermissionCommand,
@@ -48,6 +50,7 @@ export class CommandService {
         this.register(this.nowCmd);
         this.register(this.skipCmd);
         this.register(this.stopCmd);
+        this.register(this.cleanCmd);
         this.register(this.helpCmd);
         this.register(this.grantPermissionCmd);
     }

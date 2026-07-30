@@ -31,11 +31,11 @@ export class SkipCommand implements BotCommand {
                 return;
             }
 
-            const { removedSong, nextSong } = await this.voicePlaybackService.skipCurrentSong(
+            const { playedSong, nextSong } = await this.voicePlaybackService.skipCurrentSong(
                 session.voiceChannelId,
             );
 
-            if (!removedSong) {
+            if (!playedSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
                     getInfoMessage('Không có bài hát nào để bỏ qua', 'Dùng `*dj req <link>` để thêm bài nha.'),
@@ -47,8 +47,8 @@ export class SkipCommand implements BotCommand {
                 await this.mcService.updateMessage(
                     repliedMessage,
                     getSuccessMessage(
-                        `Đã bỏ qua "${removedSong.trackName}"`,
-                        'Playlist hiện đang trống.',
+                        `Đã bỏ qua "${playedSong.trackName}"`,
+                        'Không còn bài nào trong hàng đợi. Dùng `*dj clean` để dọn bài đã phát.',
                     ),
                 );
                 return;
@@ -57,7 +57,7 @@ export class SkipCommand implements BotCommand {
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSuccessMessage(
-                    `Đã bỏ qua "${removedSong.trackName}"`,
+                    `Đã bỏ qua "${playedSong.trackName}"`,
                     `Đang phát: ${nextSong.trackName}`,
                 ),
             );

@@ -42,11 +42,11 @@ export class NowCommand implements BotCommand {
                 return;
             }
 
-            const nextSong = await this.voicePlaylistService.getNextSong(
+            const nextSong = await this.voicePlaylistService.getNextUnplayedSong(
                 session.voiceChannelId,
                 currentSong.order,
             );
-            const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+            const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
             const trackInfo = this.voicePlaylistService.songToTrackInfo(currentSong);
 
             await this.mcService.updateMessage(

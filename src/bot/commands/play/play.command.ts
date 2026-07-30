@@ -42,9 +42,9 @@ export class PlayCommand implements BotCommand {
                 return;
             }
 
-            const songs = await this.voicePlaylistService.getSongsByClanId(clanId);
+            const firstSong = await this.voicePlaylistService.getFirstUnplayedSong(clanId);
 
-            if (songs.length === 0) {
+            if (!firstSong) {
                 await this.mcService.updateMessage(repliedMessage, getEmptyPlaylistMessage());
                 return;
             }
@@ -56,11 +56,11 @@ export class PlayCommand implements BotCommand {
                     : undefined;
 
                 if (currentSong && session) {
-                    const nextSong = await this.voicePlaylistService.getNextSong(
+                    const nextSong = await this.voicePlaylistService.getNextUnplayedSong(
                         session.voiceChannelId,
                         currentSong.order,
                     );
-                    const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+                    const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
 
                     await this.mcService.updateMessage(
                         repliedMessage,
@@ -82,8 +82,6 @@ export class PlayCommand implements BotCommand {
                 return;
             }
 
-            const firstSong = songs[0];
-
             try {
                 await this.voicePlaybackService.startPlayback(
                     clanId,
@@ -100,7 +98,7 @@ export class PlayCommand implements BotCommand {
                 return;
             }
 
-            const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+            const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
 
             await this.mcService.updateMessage(
                 repliedMessage,

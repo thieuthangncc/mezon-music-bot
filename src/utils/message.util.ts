@@ -195,14 +195,23 @@ export const getNowPlayingEmbedMessage = (params: {
 };
 
 export const getQueueEmbedMessage = (params: {
-    songs: Array<{ order: number; trackName: string }>;
+    songs: Array<{ order: number; trackName: string; isPlayed?: boolean }>;
     total: number;
+    unplayedTotal?: number;
     limit: number;
 }): ChannelMessageContent => {
-    const { songs, total, limit } = params;
-    const songLines = songs.map((song) => `🎵 #${song.order} ${song.trackName}`);
+    const { songs, total, unplayedTotal, limit } = params;
+    const songLines = songs.map((song) => {
+        const status = song.isPlayed ? '✅' : '⏳';
+        return `${status} #${song.order} ${song.trackName}`;
+    });
 
-    const description = [...songLines, '', `✨ Tổng cộng: ${total} bài`].join('\n');
+    const summary =
+        unplayedTotal !== undefined
+            ? `✨ Tổng cộng: ${total} bài (${unplayedTotal} chưa phát)`
+            : `✨ Tổng cộng: ${total} bài`;
+
+    const description = [...songLines, '', summary].join('\n');
 
     return getEmbedMessage({
         color: getRandomPastelHexColor() as string,

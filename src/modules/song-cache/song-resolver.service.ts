@@ -11,6 +11,7 @@ import { CloudinaryStorageService } from './cloudinary-storage.service';
 import { SongCacheService } from './song-cache.service';
 
 export interface ResolvedSong {
+    cachedSongId: string;
     trackInfo: TrackInfo;
     youtubeUrl: string;
     youtubeVideoId: string;
@@ -131,6 +132,7 @@ export class SongResolverService {
             );
 
             return {
+                cachedSongId: cachedSong.id,
                 trackInfo: resolvedTrackInfo,
                 youtubeUrl,
                 youtubeVideoId,
@@ -144,6 +146,7 @@ export class SongResolverService {
 
     private toResolvedSong(
         cachedSong: {
+            id: string;
             oggUrl: string;
             title: string;
             thumbnailUrl?: string | null;
@@ -166,6 +169,7 @@ export class SongResolverService {
         };
 
         return {
+            cachedSongId: cachedSong.id,
             trackInfo,
             youtubeUrl,
             youtubeVideoId: extractYoutubeVideoId(youtubeUrl) ?? '',

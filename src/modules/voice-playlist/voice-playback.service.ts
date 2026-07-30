@@ -2,11 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { StreamingService } from '@/modules/streaming/streaming.service';
 import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
-import { VoicePlaylistService } from './voice-playlist.service';
+import { VoicePlaylistService, PlaylistSong } from './voice-playlist.service';
 
 @Injectable()
 export class VoicePlaybackService {
     private readonly logger = new Logger(VoicePlaybackService.name);
+    private readonly skipGuard = new Set<string>();
 
     constructor(
         private readonly voicePlaylistService: VoicePlaylistService,
@@ -30,8 +31,8 @@ export class VoicePlaybackService {
         channelName: string,
         order: number,
     ) {
-        const songs = await this.voicePlaylistService.getSongsByClanId(clanId);
-        const song = songs.find((item) => item.order === order);
+        const songs = await this.voicePlaylistService.getPlaylistSongs(clanId);
+        const song = songs.find((item) => item.order === order && !item.isPlayed);
 
         if (!song) {
             throw new Error(`Song with order ${order} not found in playlist`);
@@ -41,16 +42,15 @@ export class VoicePlaybackService {
 
         const botId = process.env.MEZON_BOT_ID as string;
         const botName = process.env.MEZON_BOT_NAME as string;
-        const voiceChannel = await this.mezonClientService
-            .getClient()
-            .channels.fetch(voiceChannelId);
 
-        await voiceChannel.playMedia(
-            playableSong.playableUrl,
-            botId,
-            botName,
-            playableSong.trackName,
-        );
+        await this.mezonClientService.playMediaViaApi({
+            clanId,
+            voiceChannelId,
+            url: playableSong.playableUrl,
+            participantIdentity: botId,
+            participantName: botName,
+            trackName: playableSong.trackName,
+        });
 
         await this.startSession(voiceChannelId, clanId, channelName);
         await this.voicePlaylistService.setCurrentSong(voiceChannelId, order);
@@ -74,30 +74,34 @@ export class VoicePlaybackService {
 
         const botId = process.env.MEZON_BOT_ID as string;
         const botName = process.env.MEZON_BOT_NAME as string;
-        const voiceChannel = await this.mezonClientService
-            .getClient()
-            .channels.fetch(voiceChannelId);
 
         this.logger.log(
             `Đang phát "${playableSong.trackName}" tại ${session.channelName} (${voiceChannelId})`,
         );
 
-        await voiceChannel.playMedia(
-            playableSong.playableUrl,
-            botId,
-            botName,
-            playableSong.trackName,
-        );
+        await this.mezonClientService.playMediaViaApi({
+            clanId: session.clanId,
+            voiceChannelId,
+            url: playableSong.playableUrl,
+            participantIdentity: botId,
+            participantName: botName,
+            trackName: playableSong.trackName,
+        });
     }
 
     async handleSongFinished(voiceChannelId: string) {
+        if (this.skipGuard.has(voiceChannelId)) {
+            return;
+        }
+
         const session = await this.voicePlaylistService.getSessionByVoiceChannel(voiceChannelId);
         const finishedSong = session?.currentOrder
             ? session.songs.find((song) => song.order === session.currentOrder)
             : undefined;
         const channelLabel = session?.channelName ?? voiceChannelId;
 
-        if (finishedSong) {
+        if (finishedSong && !finishedSong.isPlayed) {
+            await this.voicePlaylistService.markSongAsPlayed(finishedSong.id);
             this.logger.log(
                 `Đã phát xong "${finishedSong.trackName}" tại ${channelLabel}, bot rời channel`,
             );
@@ -123,18 +127,25 @@ export class VoicePlaybackService {
     async skipCurrentSong(voiceChannelId: string) {
         const session = await this.voicePlaylistService.getSessionByVoiceChannel(voiceChannelId);
         if (!session) {
-            return { removedSong: undefined, nextSong: undefined };
+            return { playedSong: undefined, nextSong: undefined };
         }
 
+        this.skipGuard.add(voiceChannelId);
         this.streamingService.stopStreaming({ ChannelId: voiceChannelId });
 
-        const result = await this.voicePlaylistService.skipCurrentSong(voiceChannelId);
+        try {
+            const result = await this.voicePlaylistService.markCurrentSongAsPlayed(voiceChannelId);
 
-        if (result.nextSong) {
-            await this.playSong(voiceChannelId, result.nextSong.order);
+            if (result.nextSong) {
+                await this.playSong(voiceChannelId, result.nextSong.order);
+            } else {
+                await this.killSession(voiceChannelId);
+            }
+
+            return result;
+        } finally {
+            setTimeout(() => this.skipGuard.delete(voiceChannelId), 3000);
         }
-
-        return result;
     }
 
     async playNextSong(voiceChannelId: string): Promise<boolean> {
@@ -143,7 +154,7 @@ export class VoicePlaybackService {
             return false;
         }
 
-        const nextSong = await this.voicePlaylistService.getNextSong(
+        const nextSong = await this.voicePlaylistService.getNextUnplayedSong(
             voiceChannelId,
             session.currentOrder,
         );
@@ -160,21 +171,19 @@ export class VoicePlaybackService {
         }
     }
 
-    private async ensurePlayableSong(song: {
-        id: string;
-        songUrl: string;
-        playableUrl: string;
-        trackName: string;
-    }) {
+    private async ensurePlayableSong(song: PlaylistSong): Promise<PlaylistSong> {
         if (song.playableUrl) {
             return song;
         }
 
         const resolved = await this.songResolverService.resolve(song.songUrl);
-        return this.voicePlaylistService.updateSongFromResolved(song.id, {
-            songUrl: resolved.youtubeUrl,
+        return {
+            ...song,
             playableUrl: resolved.playableUrl,
-            trackInfo: resolved.trackInfo,
-        });
+            trackName: resolved.trackInfo.trackName,
+            thumbnailUrl: resolved.trackInfo.thumbnailUrl,
+            authorName: resolved.trackInfo.authorName,
+            durationSeconds: resolved.trackInfo.durationSeconds,
+        };
     }
 }
