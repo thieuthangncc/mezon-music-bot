@@ -3,7 +3,7 @@ import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { MiscService } from '@/modules/misc/misc.service';
-import { getTextMessage } from '@/utils';
+import { getErrorMessage, getSuccessMessage, getWarningMessage } from '@/utils';
 
 @Injectable()
 export class GrantPermissionCommand implements BotCommand {
@@ -28,7 +28,10 @@ export class GrantPermissionCommand implements BotCommand {
             if (!rawIds.trim()) {
                 await this.mezonClientService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Vui lòng nhập ID người dùng. Ví dụ: *dj gp abc, xyz, mmm'),
+                    getErrorMessage(
+                        'Chưa có ID người dùng',
+                        'Ví dụ: `*dj gp abc, xyz, mmm`',
+                    ),
                 );
                 return;
             }
@@ -41,7 +44,7 @@ export class GrantPermissionCommand implements BotCommand {
             if (newIds.length === 0) {
                 await this.mezonClientService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Không tìm thấy ID hợp lệ.'),
+                    getErrorMessage('Không tìm thấy ID hợp lệ', 'Hãy kiểm tra lại danh sách ID nha.'),
                 );
                 return;
             }
@@ -53,7 +56,10 @@ export class GrantPermissionCommand implements BotCommand {
             if (!clan) {
                 await this.mezonClientService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Clan chưa được thiết lập. Vui lòng thiết lập clan trước.'),
+                    getErrorMessage(
+                        'Clan chưa được thiết lập',
+                        'Dùng `*dj setup` để khởi tạo trước nha.',
+                    ),
                 );
                 return;
             }
@@ -61,7 +67,10 @@ export class GrantPermissionCommand implements BotCommand {
             if (clan.ownerId !== senderId) {
                 await this.mezonClientService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bạn không có quyền cấp quyền. Chỉ chủ sở hữu clan mới có thể cấp quyền.'),
+                    getErrorMessage(
+                        'Bạn không có quyền cấp quyền',
+                        'Chỉ chủ sở hữu clan mới có thể cấp quyền nha.',
+                    ),
                 );
                 return;
             }
@@ -78,7 +87,10 @@ export class GrantPermissionCommand implements BotCommand {
             if (addedCount === 0) {
                 await this.mezonClientService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Không có ID người dùng mới nào được thêm. Tất cả ID đã có quyền.'),
+                    getWarningMessage(
+                        'Không có ID mới nào được thêm',
+                        'Tất cả ID đã có quyền rồi nha.',
+                    ),
                 );
                 return;
             }
@@ -90,7 +102,10 @@ export class GrantPermissionCommand implements BotCommand {
 
             await this.mezonClientService.updateMessage(
                 repliedMessage,
-                getTextMessage(`Đã cấp quyền thành công cho ${addedCount} người dùng.`),
+                getSuccessMessage(
+                    `Đã cấp quyền cho ${addedCount} người dùng`,
+                    'Họ có thể dùng các lệnh quản lý nha.',
+                ),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `grantpermission`:', error);

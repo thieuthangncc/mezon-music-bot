@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { BotCommand, CommandContext, CommandRole } from '../command.interface';
+import { SILENCE_URL } from '@/constants/misc.constant';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getInfoMessage, getNotPlayingMessage, getSuccessMessage } from '@/utils';
+import { getInfoMessage, getSuccessMessage } from '@/utils';
 
 @Injectable()
-export class SkipCommand implements BotCommand {
-    name = 'skip';
+export class ClearCommand implements BotCommand {
+    name = 'clear';
     role: CommandRole = 'elevated';
-    description = 'Bỏ qua bài hát hiện tại';
+    description = 'Xóa toàn bộ playlist';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -26,30 +27,29 @@ export class SkipCommand implements BotCommand {
             const clanId = event.clan_id as string;
             const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
-            if (!session) {
-                await this.mcService.updateMessage(repliedMessage, getNotPlayingMessage());
-                return;
+            if (session) {
+                const botId = process.env.MEZON_BOT_ID as string;
+                const botName = process.env.MEZON_BOT_NAME as string;
+
+                await this.mcService.playMediaViaApi({
+                    clanId,
+                    voiceChannelId: session.voiceChannelId,
+                    url: SILENCE_URL,
+                    participantIdentity: botId,
+                    participantName: botName,
+                    trackName: 'Silence',
+                });
+
+                await this.voicePlaybackService.killSession(session.voiceChannelId);
+                this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
             }
 
-            const { playedSong, nextSong } = await this.voicePlaybackService.skipCurrentSong(
-                session.voiceChannelId,
-            );
+            const removedCount = await this.voicePlaylistService.clearAllSongs(clanId);
 
-            if (!playedSong) {
+            if (removedCount === 0) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getInfoMessage('Không có bài hát nào để bỏ qua', 'Dùng `*dj req <link>` để thêm bài nha.'),
-                );
-                return;
-            }
-
-            if (!nextSong) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getSuccessMessage(
-                        `Đã bỏ qua "${playedSong.trackName}"`,
-                        'Không còn bài nào trong hàng đợi. Dùng `*dj clean` để dọn bài đã phát.',
-                    ),
+                    getInfoMessage('Playlist đang trống', 'Không có bài nào để xóa nha.'),
                 );
                 return;
             }
@@ -57,12 +57,12 @@ export class SkipCommand implements BotCommand {
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSuccessMessage(
-                    `Đã bỏ qua "${playedSong.trackName}"`,
-                    `Đang phát: ${nextSong.trackName}`,
+                    `Đã xóa toàn bộ ${removedCount} bài khỏi playlist`,
+                    'Dùng `*dj req <link>` để thêm bài mới nha.',
                 ),
             );
         } catch (error) {
-            console.error('❌ Lỗi khi thực hiện lệnh `skip`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `clear`:', error);
             await this.miscService.handleCommandError(ctx, error);
         }
     }

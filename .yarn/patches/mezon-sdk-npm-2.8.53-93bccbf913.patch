@@ -1,0 +1,26 @@
+diff --git a/dist/cjs/mezon-client/structures/TextChannel.js b/dist/cjs/mezon-client/structures/TextChannel.js
+index b4b5f22db4b5887477ad7c67dd06ea6311a401f0..a8492d562d38a44cb7ba7116da6427f8200f1b54 100644
+--- a/dist/cjs/mezon-client/structures/TextChannel.js
++++ b/dist/cjs/mezon-client/structures/TextChannel.js
+@@ -146,7 +146,7 @@ class TextChannel {
+         });
+     }
+     async playMedia(url, participantIdentity, participantName, name) {
+-        const meetingCode = this.meeting_code;
++        const meetingCode = this.id;
+         if (!meetingCode) {
+             return { error: "Channel not voice channel." };
+         }
+diff --git a/dist/esm/mezon-client/structures/TextChannel.js b/dist/esm/mezon-client/structures/TextChannel.js
+index 6b6b7cb94dae3934925c180e05436815310fbe50..3cb95ad8e01ca9571e2b4a7fc82d042e102c4bc9 100644
+--- a/dist/esm/mezon-client/structures/TextChannel.js
++++ b/dist/esm/mezon-client/structures/TextChannel.js
+@@ -187,7 +187,7 @@ export class TextChannel {
+         });
+     }
+     async playMedia(url, participantIdentity, participantName, name) {
+-        const meetingCode = this.meeting_code;
++        const meetingCode = this.id;
+         if (!meetingCode) {
+             return { error: "Channel not voice channel." };
+         }

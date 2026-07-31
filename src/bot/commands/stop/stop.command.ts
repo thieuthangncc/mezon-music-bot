@@ -1,16 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { BotCommand, CommandContext, CommandRole } from '../command.interface';
+import { SILENCE_URL } from '@/constants/misc.constant';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage } from '@/utils';
+import { getSuccessMessage } from '@/utils';
 
 @Injectable()
 export class StopCommand implements BotCommand {
     name = 'stop';
     role: CommandRole = 'elevated';
-    description = 'Dừng và xóa toàn bộ playlist';
+    description = 'Dừng phát nhạc';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -27,15 +28,25 @@ export class StopCommand implements BotCommand {
             const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
             if (session) {
+                const botId = process.env.MEZON_BOT_ID as string;
+                const botName = process.env.MEZON_BOT_NAME as string;
+
+                await this.mcService.playMediaViaApi({
+                    clanId,
+                    voiceChannelId: session.voiceChannelId,
+                    url: SILENCE_URL,
+                    participantIdentity: botId,
+                    participantName: botName,
+                    trackName: 'Silence',
+                });
+
                 await this.voicePlaybackService.killSession(session.voiceChannelId);
                 this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
             }
 
-            await this.voicePlaylistService.clearPlaylist(clanId);
-
             await this.mcService.updateMessage(
                 repliedMessage,
-                getTextMessage('Đã dừng và xóa toàn bộ playlist.'),
+                getSuccessMessage('Đã dừng phát nhạc', 'Dùng `*dj play` để tiếp tục phát nha.'),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `stop`:', error);

@@ -46,13 +46,15 @@ export class HelpCommand implements BotCommand {
                 lines.push(`\`*dj ${cmd.name}\` - ${cmd.description}`);
             }
 
+            lines.push('`*dj <mô tả vibe/mood>*` - Gợi ý bài hát bằng AI');
+
             const embed = getEmbedMessage({
                 color: '#f6a6c1',
-                title: '🌸 ' + process.env.MEZON_BOT_NAME + ' - Danh sách lệnh',
-                description: 'Danh sách các lệnh hiện có của ' + process.env.MEZON_BOT_NAME,
+                title: `ℹ️ ${process.env.MEZON_BOT_NAME} - Danh sách lệnh`,
+                description: `✨ Danh sách các lệnh hiện có của ${process.env.MEZON_BOT_NAME}`,
                 fields: [{ name: '📋 Danh sách lệnh', value: lines.join('\n'), inline: false }],
                 footer: {
-                    text: 'Tip: Bạn có thể sử dụng lệnh *dj help để xem hướng dẫn sử dụng các lệnh.',
+                    text: '💡 Dùng *dj help để xem hướng dẫn bất cứ lúc nào nha.',
                 },
             });
 

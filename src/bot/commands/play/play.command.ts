@@ -4,7 +4,15 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage, getSongEmbedMessage, getNowPlayingEmbedMessage, getUserVoiceChannel } from '@/utils';
+import {
+    getErrorMessage,
+    getInfoMessage,
+    getSongEmbedMessage,
+    getNowPlayingEmbedMessage,
+    getEmptyPlaylistMessage,
+    getNeedVoiceChannelMessage,
+    getUserVoiceChannel,
+} from '@/utils';
 
 @Injectable()
 export class PlayCommand implements BotCommand {
@@ -30,20 +38,14 @@ export class PlayCommand implements BotCommand {
             const voiceChannel = await getUserVoiceChannel(client, clanId, userId);
 
             if (!voiceChannel) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Bạn cần tham gia kênh thoại trước khi sử dụng lệnh này.'),
-                );
+                await this.mcService.updateMessage(repliedMessage, getNeedVoiceChannelMessage());
                 return;
             }
 
-            const songs = await this.voicePlaylistService.getSongsByClanId(clanId);
+            const firstSong = await this.voicePlaylistService.resolvePlayStartSong(clanId);
 
-            if (songs.length === 0) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Playlist trống. Dùng `*dj req <link>` để thêm bài hát.'),
-                );
+            if (!firstSong) {
+                await this.mcService.updateMessage(repliedMessage, getEmptyPlaylistMessage());
                 return;
             }
 
@@ -54,11 +56,11 @@ export class PlayCommand implements BotCommand {
                     : undefined;
 
                 if (currentSong && session) {
-                    const nextSong = await this.voicePlaylistService.getNextSong(
+                    const nextSong = await this.voicePlaylistService.getNextUnplayedSong(
                         session.voiceChannelId,
                         currentSong.order,
                     );
-                    const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+                    const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
 
                     await this.mcService.updateMessage(
                         repliedMessage,
@@ -75,12 +77,10 @@ export class PlayCommand implements BotCommand {
 
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Bot đang phát nhạc. Dùng `*dj now` để xem bài hiện tại.'),
+                    getInfoMessage('Bot đang phát nhạc rồi nè', 'Dùng `*dj now` để xem bài hiện tại nha.'),
                 );
                 return;
             }
-
-            const firstSong = songs[0];
 
             try {
                 await this.voicePlaybackService.startPlayback(
@@ -93,19 +93,28 @@ export class PlayCommand implements BotCommand {
                 console.error('❌ Lỗi khi phát nhạc:', error);
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('❌ Không thể phát nhạc. Vui lòng thử lại sau.'),
+                    getErrorMessage('Không thể phát nhạc', 'Hãy thử lại sau nha.'),
                 );
                 return;
             }
+
+            const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
 
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSongEmbedMessage({
                     trackInfo: this.voicePlaylistService.songToTrackInfo(firstSong),
-                    description: `🎵 Đang phát trong "${voiceChannel.channelName}"`,
+                    description: [
+                        '🎵 Đã bắt đầu phát nhạc',
+                        '',
+                        `✨ Kênh: ${voiceChannel.channelName}`,
+                        `📋 Hàng đợi hiện có ${queueTotal} bài`,
+                    ].join('\n'),
                     songUrl: firstSong.songUrl,
                     order: firstSong.order,
+                    queueTotal,
                     requestedBy: firstSong.requestedBy,
+                    channelName: voiceChannel.channelName,
                 }),
             );
         } catch (error) {

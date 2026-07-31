@@ -8,6 +8,7 @@ import { StreamingModule } from './modules/streaming/streaming.module';
 import { ListenersModule } from './bot/listeners/listeners.module';
 import { VoicePlaylistModule } from './modules/voice-playlist/voice-playlist.module';
 import { SongCacheModule } from './modules/song-cache/song-cache.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
     imports: [
@@ -20,6 +21,7 @@ import { SongCacheModule } from './modules/song-cache/song-cache.module';
         StreamingModule,
         VoicePlaylistModule,
         SongCacheModule,
+        AiModule,
         ListenersModule,
     ],
     providers: [AppService],

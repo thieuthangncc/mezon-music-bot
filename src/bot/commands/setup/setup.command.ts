@@ -3,12 +3,12 @@ import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { PrismaService } from '@/libs/prisma/prisma.service';
 import { MiscService } from '@/modules/misc/misc.service';
-import { getTextMessage } from '@/utils';
+import { getErrorMessage, getSuccessMessage } from '@/utils';
 
 @Injectable()
 export class SetupCommand implements BotCommand {
     name = 'setup';
-    role: CommandRole = 'elevated';
+    role: CommandRole = 'public';
     description = 'Khởi tạo clan và playlist';
 
     constructor(
@@ -25,6 +25,21 @@ export class SetupCommand implements BotCommand {
             const clanId = event.clan_id as string;
             const username = (event.username || event.display_name) as string;
             const avatar = event.avatar as string;
+
+            const existingClan = await this.prismaService.clan.findUnique({
+                where: { id: clanId },
+                include: { owner: true },
+            });
+            if (existingClan) {
+                await this.mezonClientService.updateMessage(
+                    repliedMessage,
+                    getErrorMessage(
+                        'Clan đã được thiết lập rồi',
+                        `Chỉ ${existingClan.owner.username} (chủ sở hữu) mới có thể quản lý clan này.`,
+                    ),
+                );
+                return;
+            }
 
             await this.prismaService.$transaction(async (tx) => {
                 await tx.user.upsert({
@@ -51,7 +66,10 @@ export class SetupCommand implements BotCommand {
 
             await this.mezonClientService.updateMessage(
                 repliedMessage,
-                getTextMessage('Khởi tạo thành công! User, clan và playlist mặc định đã được tạo.'),
+                getSuccessMessage(
+                    'Khởi tạo thành công rồi nè',
+                    'User, clan và playlist mặc định đã sẵn sàng.',
+                ),
             );
         } catch (error) {
             console.error('❌ Lỗi khi thực hiện lệnh `setup`:', error);

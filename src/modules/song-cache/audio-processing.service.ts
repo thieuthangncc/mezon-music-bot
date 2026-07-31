@@ -10,7 +10,8 @@ const execFileAsync = promisify(execFile);
 const YT_DLP_BIN = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
 const DEFAULT_YT_DLP_PATH = join(process.cwd(), 'node_modules/youtube-dl-exec/bin', YT_DLP_BIN);
 const MAX_AUDIO_SIZE_BYTES = 10 * 1024 * 1024;
-export const SONG_UNPLAYABLE_MESSAGE = 'Can not play this song. Please try again later.';
+export const SONG_UNPLAYABLE_MESSAGE =
+    '❌ Không thể phát bài hát này\n\n💡 Hãy thử bài khác hoặc thử lại sau nha.';
 
 export interface ProcessedAudioResult {
     oggPath: string;

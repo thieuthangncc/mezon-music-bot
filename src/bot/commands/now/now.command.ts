@@ -3,7 +3,7 @@ import { BotCommand, CommandContext, CommandRole } from '../command.interface';
 import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getTextMessage, getNowPlayingEmbedMessage } from '@/utils';
+import { getInfoMessage, getNotPlayingMessage, getNowPlayingEmbedMessage } from '@/utils';
 
 @Injectable()
 export class NowCommand implements BotCommand {
@@ -25,10 +25,7 @@ export class NowCommand implements BotCommand {
             const session = await this.voicePlaylistService.findSessionByClanId(clanId);
 
             if (!session) {
-                await this.mcService.updateMessage(
-                    repliedMessage,
-                    getTextMessage('Bot chưa phát nhạc. Dùng `*dj play` để phát.'),
-                );
+                await this.mcService.updateMessage(repliedMessage, getNotPlayingMessage());
                 return;
             }
 
@@ -37,16 +34,19 @@ export class NowCommand implements BotCommand {
             if (!currentSong) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage(`Không có bài hát nào đang phát trong "${session.channelName}".`),
+                    getInfoMessage(
+                        'Không có bài hát nào đang phát',
+                        `Kênh thoại: ${session.channelName}`,
+                    ),
                 );
                 return;
             }
 
-            const nextSong = await this.voicePlaylistService.getNextSong(
+            const nextSong = await this.voicePlaylistService.getNextUnplayedSong(
                 session.voiceChannelId,
                 currentSong.order,
             );
-            const queueTotal = await this.voicePlaylistService.getSongCount(clanId);
+            const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
             const trackInfo = this.voicePlaylistService.songToTrackInfo(currentSong);
 
             await this.mcService.updateMessage(

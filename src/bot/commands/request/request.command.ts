@@ -4,7 +4,8 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
 import { SongResolverService } from '@/modules/song-cache/song-resolver.service';
-import { getTextMessage, getSongEmbedMessage, getEmbedMessage, getRandomPastelHexColor, getYoutubeTrackInfo, extractFirstUrl } from '@/utils';
+import { AiContentService } from '@/modules/ai/ai-content.service';
+import { getSongEmbedMessage, getEmbedMessage, getRandomPastelHexColor, getYoutubeTrackInfo, extractFirstUrl, getErrorMessage } from '@/utils';
 
 @Injectable()
 export class RequestCommand implements BotCommand {
@@ -17,6 +18,7 @@ export class RequestCommand implements BotCommand {
         private readonly miscService: MiscService,
         private readonly voicePlaylistService: VoicePlaylistService,
         private readonly songResolverService: SongResolverService,
+        private readonly aiContentService: AiContentService,
     ) {}
 
     async execute(ctx: CommandContext) {
@@ -28,7 +30,10 @@ export class RequestCommand implements BotCommand {
             if (!songUrl) {
                 await this.mcService.updateMessage(
                     repliedMessage,
-                    getTextMessage('Vui lòng cung cấp link bài hát. Ví dụ: `*dj add <link>`'),
+                    getErrorMessage(
+                        'Chưa có link bài hát',
+                        'Hãy gửi link YouTube. Ví dụ: `*dj req <link>`',
+                    ),
                 );
                 return;
             }
@@ -55,20 +60,46 @@ export class RequestCommand implements BotCommand {
 
             const song = await this.voicePlaylistService.addSong(
                 clanId,
-                resolved.youtubeUrl,
-                resolved.playableUrl,
-                resolved.trackInfo,
+                resolved.cachedSongId,
                 requestedBy,
             );
             const prevSong = await this.voicePlaylistService.getPreviousSongByClanId(clanId, song.order);
+            const queueTotal = await this.voicePlaylistService.getUnplayedSongCount(clanId);
+
+            const funReply = await this.aiContentService.generateSongRequestReply({
+                trackName: resolved.trackInfo.trackName,
+                authorName: resolved.trackInfo.authorName,
+                requestedBy,
+                queuePosition: song.order,
+                queueTotal,
+                prevTrackName: prevSong?.trackName,
+            });
+
+            const queueStatus =
+                song.order === 1
+                    ? '🚀 Sắp lên sóng — bài đầu tiên trong hàng đợi!'
+                    : song.order === queueTotal
+                      ? `⏳ Xếp cuối hàng — còn ${queueTotal - 1} bài trước bạn`
+                      : `🎯 Còn ${song.order - 1} bài nữa là tới lượt`;
 
             await this.mcService.updateMessage(
                 repliedMessage,
                 getSongEmbedMessage({
                     trackInfo: resolved.trackInfo,
-                    description: `✅ Đã thêm bài hát (#${song.order})`,
+                    description: [
+                        `🎉 **ĐÃ VÀO QUEUE!**`,
+                        `💬 ${funReply}`,
+                        '',
+                        '───────────────',
+                        queueStatus,
+                        `📍 Vị trí **#${song.order}**  •  📋 **${queueTotal}** bài đang chờ`,
+                        prevSong ? `🎵 Trước đó: *${prevSong.trackName}*` : undefined,
+                    ]
+                        .filter((line): line is string => line !== undefined)
+                        .join('\n'),
                     songUrl: resolved.youtubeUrl,
                     order: song.order,
+                    queueTotal,
                     prevTrackName: prevSong?.trackName ?? '—',
                     requestedBy,
                 }),

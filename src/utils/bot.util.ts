@@ -29,6 +29,20 @@ export function parseCommand(content: string): ParsedCommand {
     };
 }
 
+export function extractQueryAfterPrefix(content: string): string {
+    const text = content.trim();
+    const prefixes = [process.env.COMMAND_PREFIX as string, 'dj'].filter(Boolean);
+
+    for (const prefix of prefixes) {
+        const trigger = `*${prefix}`;
+        if (text.toLowerCase().startsWith(trigger.toLowerCase())) {
+            return text.slice(trigger.length).trim();
+        }
+    }
+
+    return '';
+}
+
 export function extractFirstUrl(text: string): string | null {
     const match = text.match(/https?:\/\/[^\s<>]+/i);
     return match?.[0] ?? null;

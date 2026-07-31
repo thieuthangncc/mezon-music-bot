@@ -48,17 +48,14 @@ model Playlist {
 }
 
 model PlaylistSong {
-  id              String  @id
-  playlistId      String
-  playlist        Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
-  songUrl         String
-  playableUrl     String?
-  title           String?
-  thumbnailUrl    String?
-  authorName      String?
-  durationSeconds Int?
-  requestedBy     String?
-  order           Int
+  id           String     @id
+  playlistId   String
+  playlist     Playlist   @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  cachedSongId String
+  cachedSong   CachedSong @relation(fields: [cachedSongId], references: [id])
+  requestedBy  String?
+  order        Int
+  isPlayed     Boolean    @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -85,6 +82,8 @@ model CachedSong {
   authorUrl       String?
   providerName    String?
   durationSeconds Int?
+
+  playlistSongs PlaylistSong[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
