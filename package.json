@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "",
   "author": "",
+  "packageManager": "yarn@4.15.0",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
@@ -29,7 +30,7 @@
     "class-validator": "^0.15.1",
     "cloudinary": "^2.10.0",
     "dotenv": "^17.4.2",
-    "mezon-sdk": "patch:mezon-sdk@npm%3A2.8.53#~/.yarn/patches/mezon-sdk-npm-2.8.53-93bccbf913.patch",
+    "mezon-sdk": "^2.8.53",
     "prisma": "^7.9.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
