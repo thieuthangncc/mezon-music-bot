@@ -17,6 +17,7 @@ import { NowCommand } from './now/now.command';
 import { SkipCommand } from './skip/skip.command';
 import { StopCommand } from './stop/stop.command';
 import { CleanCommand } from './clean/clean.command';
+import { ClearCommand } from './clear/clear.command';
 import { HelpCommand } from './help/help.command';
 import { GrantPermissionCommand } from './grant-permission/grant-permission.command';
 
@@ -38,6 +39,7 @@ export class CommandService {
         private readonly skipCmd: SkipCommand,
         private readonly stopCmd: StopCommand,
         private readonly cleanCmd: CleanCommand,
+        private readonly clearCmd: ClearCommand,
         @Inject(forwardRef(() => HelpCommand))
         private readonly helpCmd: HelpCommand,
         private readonly grantPermissionCmd: GrantPermissionCommand,
@@ -53,6 +55,7 @@ export class CommandService {
         this.register(this.skipCmd);
         this.register(this.stopCmd);
         this.register(this.cleanCmd);
+        this.register(this.clearCmd);
         this.register(this.helpCmd);
         this.register(this.grantPermissionCmd);
     }

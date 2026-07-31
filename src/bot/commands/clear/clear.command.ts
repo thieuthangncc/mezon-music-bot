@@ -5,13 +5,13 @@ import { MezonClientService } from '@/libs/mezon-client/mezon-client.service';
 import { MiscService } from '@/modules/misc/misc.service';
 import { VoicePlaybackService } from '@/modules/voice-playlist/voice-playback.service';
 import { VoicePlaylistService } from '@/modules/voice-playlist/voice-playlist.service';
-import { getSuccessMessage } from '@/utils';
+import { getInfoMessage, getSuccessMessage } from '@/utils';
 
 @Injectable()
-export class StopCommand implements BotCommand {
-    name = 'stop';
+export class ClearCommand implements BotCommand {
+    name = 'clear';
     role: CommandRole = 'elevated';
-    description = 'Dừng phát nhạc';
+    description = 'Xóa toàn bộ playlist';
 
     constructor(
         private readonly mcService: MezonClientService,
@@ -44,12 +44,25 @@ export class StopCommand implements BotCommand {
                 this.mcService.leaveVoiceChannel(clanId, session.voiceChannelId);
             }
 
+            const removedCount = await this.voicePlaylistService.clearAllSongs(clanId);
+
+            if (removedCount === 0) {
+                await this.mcService.updateMessage(
+                    repliedMessage,
+                    getInfoMessage('Playlist đang trống', 'Không có bài nào để xóa nha.'),
+                );
+                return;
+            }
+
             await this.mcService.updateMessage(
                 repliedMessage,
-                getSuccessMessage('Đã dừng phát nhạc', 'Dùng `*dj play` để tiếp tục phát nha.'),
+                getSuccessMessage(
+                    `Đã xóa toàn bộ ${removedCount} bài khỏi playlist`,
+                    'Dùng `*dj req <link>` để thêm bài mới nha.',
+                ),
             );
         } catch (error) {
-            console.error('❌ Lỗi khi thực hiện lệnh `stop`:', error);
+            console.error('❌ Lỗi khi thực hiện lệnh `clear`:', error);
             await this.miscService.handleCommandError(ctx, error);
         }
     }

@@ -42,7 +42,7 @@ export class PlayCommand implements BotCommand {
                 return;
             }
 
-            const firstSong = await this.voicePlaylistService.getFirstUnplayedSong(clanId);
+            const firstSong = await this.voicePlaylistService.resolvePlayStartSong(clanId);
 
             if (!firstSong) {
                 await this.mcService.updateMessage(repliedMessage, getEmptyPlaylistMessage());

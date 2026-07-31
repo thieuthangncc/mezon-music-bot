@@ -10,11 +10,12 @@ import { NowCommand } from './now/now.command';
 import { SkipCommand } from './skip/skip.command';
 import { StopCommand } from './stop/stop.command';
 import { CleanCommand } from './clean/clean.command';
+import { ClearCommand } from './clear/clear.command';
 import { HelpCommand } from './help/help.command';
 import { GrantPermissionCommand } from './grant-permission/grant-permission.command';
 
 @Module({
-    providers: [CommandService, StreamCommand, StopstreamCommand, SetupCommand, PlayCommand, RequestCommand, PlaylistCommand, NowCommand, SkipCommand, StopCommand, CleanCommand, HelpCommand, GrantPermissionCommand],
+    providers: [CommandService, StreamCommand, StopstreamCommand, SetupCommand, PlayCommand, RequestCommand, PlaylistCommand, NowCommand, SkipCommand, StopCommand, CleanCommand, ClearCommand, HelpCommand, GrantPermissionCommand],
     exports: [CommandService],
 })
 export class CommandModule {}

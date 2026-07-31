@@ -19,3 +19,6 @@ export const getRandomPastelHexColor = () => {
 
     return hslToHex(hue, saturation, lightness);
 };
+
+export const getRandomDjDanceUrl = (urls: readonly string[]) =>
+    urls[Math.floor(Math.random() * urls.length)]!;

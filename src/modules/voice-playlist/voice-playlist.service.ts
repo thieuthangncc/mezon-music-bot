@@ -191,6 +191,31 @@ export class VoicePlaylistService {
         return song ? this.mapSong(song) : undefined;
     }
 
+    async resolvePlayStartSong(clanId: string): Promise<PlaylistSong | undefined> {
+        const firstUnplayed = await this.getFirstUnplayedSong(clanId);
+        if (firstUnplayed) {
+            return firstUnplayed;
+        }
+
+        const playlist = await this.prisma.playlist.findUnique({
+            where: { clanId },
+            include: {
+                songs: { orderBy: { order: 'asc' }, take: 1, include: songInclude },
+            },
+        });
+
+        if (!playlist?.songs.length) {
+            return undefined;
+        }
+
+        await this.prisma.playlistSong.updateMany({
+            where: { playlistId: playlist.id },
+            data: { isPlayed: false },
+        });
+
+        return this.mapSong(playlist.songs[0]);
+    }
+
     async getPreviousSong(voiceChannelId: string, currentOrder: number): Promise<PlaylistSong | undefined> {
         const session = await this.getSessionByVoiceChannel(voiceChannelId);
         return session?.songs.find((song) => song.order === currentOrder - 1);
@@ -338,6 +363,28 @@ export class VoicePlaylistService {
 
         const result = await this.prisma.playlistSong.deleteMany({
             where: { playlistId: playlist.id, isPlayed: true },
+        });
+
+        return result.count;
+    }
+
+    async clearAllSongs(clanId: string): Promise<number> {
+        const playlist = await this.prisma.playlist.findUnique({ where: { clanId } });
+        if (!playlist) {
+            return 0;
+        }
+
+        const result = await this.prisma.playlistSong.deleteMany({
+            where: { playlistId: playlist.id },
+        });
+
+        await this.prisma.playlist.update({
+            where: { id: playlist.id },
+            data: {
+                currentOrder: null,
+                voiceChannelId: null,
+                voiceChannelName: null,
+            },
         });
 
         return result.count;

@@ -4,7 +4,7 @@ import { Message } from 'mezon-sdk/dist/cjs/mezon-client/structures/Message';
 import { TextChannel } from 'mezon-sdk/dist/cjs/mezon-client/structures/TextChannel';
 import { StreamingService } from '@/modules/streaming/streaming.service';
 
-const PLAYMEDIA_API_URL = 'https://stn.nccsoft.vn/api/playmedia';
+const PLAYMEDIA_API_URL = 'https://stn.mezon.ai/api/playmedia';
 
 export interface PlayMediaViaApiParams {
     clanId: string;

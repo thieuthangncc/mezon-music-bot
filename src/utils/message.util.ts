@@ -1,6 +1,6 @@
 import { ChannelMessageContent, IInteractiveMessageProps } from 'mezon-sdk';
 import { DJ_DANCE_URL, LOADING_EMOJI_ID, MUSIC_WAVE_URL } from '@/constants';
-import { getRandomPastelHexColor } from '@/utils/misc.util';
+import { getRandomDjDanceUrl, getRandomPastelHexColor } from '@/utils/misc.util';
 import { formatDuration, TrackInfo } from '@/utils/youtube.util';
 import { PlaylistSong } from '@/modules/voice-playlist/voice-playlist.service';
 
@@ -189,7 +189,7 @@ export const getNowPlayingEmbedMessage = (params: {
         },
         thumbnail: trackInfo.thumbnailUrl ? { url: trackInfo.thumbnailUrl } : undefined,
         image: {
-            url: DJ_DANCE_URL,
+            url: getRandomDjDanceUrl(DJ_DANCE_URL),
         },
     });
 };
@@ -201,9 +201,9 @@ export const getQueueEmbedMessage = (params: {
     limit: number;
 }): ChannelMessageContent => {
     const { songs, total, unplayedTotal, limit } = params;
-    const songLines = songs.map((song) => {
+    const songLines = songs.map((song, index) => {
         const status = song.isPlayed ? '✅' : '⏳';
-        return `${status} #${song.order} ${song.trackName}`;
+        return `${status} #${index + 1} ${song.trackName}`;
     });
 
     const summary =
